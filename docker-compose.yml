@@ -70,6 +70,18 @@ services:
     networks:
       - medical_bracelet_network
 
+  # ... خدماتك الحالية (laravel, mysql, redis, etc) ...
+  ai_service:
+    build:
+      context: ./ai_service
+    container_name: medical_ai_service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./ai_service:/app
+    networks:
+      - medical_bracelet_network # نفس شبكة لارافيل ليتمكنوا من التواصل
+
 networks:
   medical_bracelet_network:
     driver: bridge

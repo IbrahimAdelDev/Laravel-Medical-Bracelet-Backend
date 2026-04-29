@@ -24,9 +24,9 @@ class AuthService
     public function generateTokens(User $user)
     {
         // if you want to invalidate all previous tokens on new login, uncomment the line below
-        // $user->tokens()->delete(); 
+        $user->tokens()->delete(); 
 
-        $accessToken = $user->createToken('access_token', ['*'], now()->addMinutes(15))->plainTextToken;
+        $accessToken = $user->createToken('access_token', ['access-api'], now()->addMinutes(15))->plainTextToken;
         $refreshToken = $user->createToken('refresh_token', ['issue-access-token'], now()->addDays(7))->plainTextToken;
 
         return [

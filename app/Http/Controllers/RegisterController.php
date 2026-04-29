@@ -19,6 +19,21 @@ class RegisterController extends Controller
         $this->authService = $authService;
     }
 
+    private function respondWithTokens($data)
+    {
+        $accessCookie = cookie('access_token', $data['access_token'], 15, null, null, env('APP_ENV') !== 'local', true); 
+        $refreshCookie = cookie('refresh_token', $data['refresh_token'], 10080, null, null, env('APP_ENV') !== 'local', true);
+
+        $result = [
+            'status' => 'success',
+            'message' => 'Registration successful',
+            'data' => $data
+        ];
+        return response()->json($result)
+                         ->withCookie($accessCookie)
+                         ->withCookie($refreshCookie);
+    }
+
     public function registerNormal(Request $request)
     {
         $validated = $request->validate([
@@ -28,7 +43,10 @@ class RegisterController extends Controller
         ]);
 
         $user = $this->userService->registerNormalUser($validated);
-        return response()->json($this->authService->generateTokens($user));
+
+        $tokenData = $this->authService->generateTokens($user);
+        
+        return $this->respondWithTokens($tokenData);
     }
 
     public function registerDoctor(Request $request)
@@ -40,7 +58,10 @@ class RegisterController extends Controller
         ]);
 
         $doctor = $this->userService->registerDoctor($validated);
-        return response()->json($this->authService->generateTokens($doctor));
+
+        $tokenData = $this->authService->generateTokens($doctor);
+
+        return $this->respondWithTokens($tokenData);
     }
 
     public function registerSecretary(Request $request)
