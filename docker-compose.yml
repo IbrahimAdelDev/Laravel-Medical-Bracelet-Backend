@@ -3,17 +3,25 @@ version: '3.8'
 services:
   app:
     user: "${UID}:${GID}"
+
     build:
       context: .
       dockerfile: docker/php/Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+
     container_name: medical_bracelet_app
     restart: unless-stopped
     working_dir: /var/www
+
     volumes:
       - ./:/var/www
+
     depends_on:
       - db
       - redis
+
     networks:
       - medical_bracelet_network
 
@@ -52,7 +60,7 @@ services:
     container_name: medical_bracelet_phpmyadmin
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8081:80"
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
@@ -71,6 +79,27 @@ services:
       - medical_bracelet_network
 
   # ... خدماتك الحالية (laravel, mysql, redis, etc) ...
+
+  reverb:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    container_name: medical_bracelet_reverb
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan reverb:start --host="0.0.0.0" --port=8080 --debug
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - app
+      - redis
+    networks:
+      - medical_bracelet_network
   ai_service:
     build:
       context: ./ai_service

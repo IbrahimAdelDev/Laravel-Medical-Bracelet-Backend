@@ -9,17 +9,11 @@ class SensorReading extends Model
     protected $fillable = [
         'device_id', 
         'patient_id', 
-        'heart_rate', 
-        'spo2', 
-        'body_temperature', 
-        'ecg_signal', 
-        'acc_x', 
-        'acc_y', 
-        'acc_z', 
-        'uv_index', 
-        'lat', 
-        'lon', 
-        'device_timestamp'
+        'payload'
+    ];
+
+    protected $casts = [
+        'payload' => 'array', 
     ];
 
     public function device() {

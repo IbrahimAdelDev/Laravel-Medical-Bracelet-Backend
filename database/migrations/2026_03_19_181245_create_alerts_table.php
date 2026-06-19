@@ -18,6 +18,7 @@ return new class extends Migration
             $table->enum('type', ['sos_pressed', 'fall_detected', 'vitals_emergency']);
             $table->boolean('is_resolved')->default(false);
             $table->foreignId('resolved_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

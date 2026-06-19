@@ -11,7 +11,8 @@ class Alert extends Model
         'device_id', 
         'type', 
         'is_resolved', 
-        'resolved_by'
+        'resolved_by',
+        'notes'
     ];
 
     public function patient() {
