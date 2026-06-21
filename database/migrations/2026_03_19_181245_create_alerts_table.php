@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('alerts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('device_id')->constrained('devices')->cascadeOnDelete();
+            $table->foreignId('device_id')->nullable()->constrained('devices')->cascadeOnDelete();
             $table->enum('type', ['sos_pressed', 'fall_detected', 'vitals_emergency']);
             $table->boolean('is_resolved')->default(false);
             $table->foreignId('resolved_by')->nullable()->constrained('users')->nullOnDelete();

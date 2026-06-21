@@ -1,0 +1,178 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\User;
+use App\Models\Alert;
+use App\Models\MedicalHistory;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use App\Models\Notification;
+use App\Events\RealTimeNotificationBroadcast;
+use Illuminate\Pagination\Paginator;
+
+class DoctorPatientService
+{
+    public function getPatientsList(int $doctorId, ?string $searchQuery, int $perPage = 15): LengthAwarePaginator
+    {
+        // 1. هنجيب الـ IDs بتاعت مرضى الدكتور ده بس
+        $patientIds = DB::table('doctor_patients')
+            ->where('doctor_id', $doctorId)
+            ->pluck('patient_id')
+            ->toArray();
+
+        // 2. نبني الـ Query الأساسي ونجبره إنه مايخرجش بره المرضى دول
+        $query = User::whereIn('id', $patientIds)->where('role', 'user');
+
+        // 3. تطبيق فلتر البحث المتقدم (لو المستخدم كتب حاجة في السيرش)
+        if (!empty($searchQuery)) {
+            $query->where(function ($q) use ($searchQuery) {
+                $q->where('name', 'LIKE', "%{$searchQuery}%")
+                  ->orWhere('email', 'LIKE', "%{$searchQuery}%")
+                  ->orWhereHas('phones', function ($phoneQuery) use ($searchQuery) {
+                      $phoneQuery->where('phone_number', 'LIKE', "%{$searchQuery}%");
+                  });
+            });
+        }
+
+        // 4. التنفيذ وإرجاع 15 مريض في كل صفحة (Pagination)
+        return $query->paginate($perPage);
+    }
+
+    public function getPatientDetails(int $doctorId, int $patientId): User
+    {
+        // 1. نتأكد إن المريض ده متسجل تبع الدكتور ده في الجدول الوسيط
+        $isAssigned = DB::table('doctor_patients')
+            ->where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->exists();
+
+        // 2. لو مش تبعه (أو بيحاول يهكر السيستم)، نطرده بـ 404
+        if (!$isAssigned) {
+            abort(404, 'Patient not found or not assigned to you.');
+        }
+
+        // 3. لو تبعه، نجيب بيانات المريض بأمان
+        return User::where('role', 'user')->findOrFail($patientId);
+    }
+
+    public function updatePatientInfo(int $id, array $data): User
+    {
+        $patient = User::findOrFail($id);
+        $patient->update($data);
+        return $patient;
+    }
+
+    public function addDoctorNote(int $doctorId, int $patientId, array $data): MedicalHistory
+    {
+        // 1. الحماية (Security Check): التأكد إن المريض ده تبع الدكتور
+        $isAssigned = DB::table('doctor_patients')
+            ->where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(404, 'Patient not found or not assigned to you.');
+        }
+
+        // 2. إنشاء النوتة في جدول medical_histories
+        try {
+            DB::beginTransaction();
+
+            // 2. إنشاء النوتة في جدول medical_histories
+            $note = MedicalHistory::create([
+                'patient_id' => $patientId,
+                'doctor_id' => $doctorId,
+                'condition_title' => 'Doctor Note',
+                'description' => $data['note'],
+                'date_recorded' => now()->toDateString(),
+            ]);
+
+            $doctor = User::find($doctorId);
+
+            // 3. إنشاء الإشعار في جدول notifications
+            $notification = Notification::create([
+                'title' => 'Doctor Note',
+                'message' => "Dr. {$doctor->name} added a new note for you.",
+                'type' => 'general',
+                'payload' => [
+                    'note_id' => $note->id,
+                    'doctor_id' => $doctorId
+                ]
+            ]);
+
+            // 4. ربط الإشعار بالمريض في الجدول الوسيط (notification_users)
+            $patient = User::find($patientId);
+            $patient->notifications()->attach($notification->id, [
+                'is_read' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 5. إطلاق حدث الويب سوكت عشان الإشعار يوصل للموبايل في نفس اللحظة
+            event(new RealTimeNotificationBroadcast($patientId, $notification));
+
+            DB::commit();
+            return $note;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    public function getTimeline(int $doctorId, int $patientId, int $perPage = 10): LengthAwarePaginator
+    {
+        // 1. الحماية (Security Check): التأكد إن المريض ده تبع الدكتور
+        $isAssigned = DB::table('doctor_patients')
+            ->where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(404, 'Patient not found or not assigned to you.');
+        }
+
+        // 2. جلب حالات الطوارئ (Alerts)
+        $alerts = Alert::where('patient_id', $patientId)->get()->map(function ($item) {
+            return [
+                'type' => 'alert',
+                'title' => '🚨 حالة طوارئ: ' . $item->type,
+                'description' => $item->message,
+                'date' => $item->created_at,
+            ];
+        });
+
+        // 3. جلب الملاحظات الطبية (Medical Histories)
+        $histories = MedicalHistory::where('patient_id', $patientId)->get()->map(function ($item) {
+            return [
+                'type' => 'clinical_note',
+                'title' => '👨‍⚕️ ' . $item->condition_title,
+                'description' => $item->description,
+                'date' => $item->created_at,
+            ];
+        });
+
+        // 4. دمج المصفوفتين وترتيبهم تنازلياً (الأحدث فوق)
+        $mergedCollection = $alerts->merge($histories)->sortByDesc('date')->values();
+
+        // 5. تطبيق الـ Pagination يدوياً على الـ Collection
+        $currentPage = Paginator::resolveCurrentPage() ?: 1; // معرفة الصفحة الحالية من الـ URL أوتوماتيك
+        
+        // قص العناصر الخاصة بالصفحة الحالية فقط
+        $currentPageItems = $mergedCollection->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        // بناء الـ Paginator وإرجاعه
+        return new LengthAwarePaginator(
+            $currentPageItems,
+            $mergedCollection->count(), // إجمالي العناصر كلها
+            $perPage,
+            $currentPage,
+            [
+                'path' => Paginator::resolveCurrentPath(), // الحفاظ على رابط الـ URL الحالي للباجينيشن
+                'pageName' => 'page',
+            ]
+        );
+    }
+}
