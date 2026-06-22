@@ -99,13 +99,22 @@ class PatientController extends Controller
 
     public function vitalsHistory(Request $request, int $id): JsonResponse
     {
-        $period = $request->query('period', '24h');
-        // هنا يتم استدعاء بيانات الحساسات (Sensor Data) وتجميعها حسب الفترة
-        // بافتراض وجود موديل للحساسات، يمكنك فلترتها بالـ created_at
+        $doctorId = $request->user()->id;
+        
+        // فاليديشن للفترة الزمنية المسموحة
+        $validated = $request->validate([
+            'period' => 'sometimes|in:24h,7d,30d'
+        ]);
+
+        $period = $validated['period'] ?? '24h';
+
+        // استدعاء السيرفيس
+        $vitals = $this->patientService->getVitalsHistory($doctorId, $id, $period);
+
         return response()->json([
-            'status' => 'success', 
-            'message' => "Vitals history for period: {$period}",
-            'data' => [] // داتا الحساسات المجمعة توضع هنا
+            'status' => 'success',
+            'period' => $period,
+            'data' => $vitals
         ]);
     }
 }

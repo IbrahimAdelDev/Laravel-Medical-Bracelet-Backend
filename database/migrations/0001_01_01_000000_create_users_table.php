@@ -18,6 +18,9 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->enum('role', ['admin', 'doctor', 'secretary', 'user'])->default('user');
+            $table->unsignedTinyInteger('age')->nullable();
+            $table->float('height')->nullable(); // بالسنتيمتر
+            $table->float('weight')->nullable(); // بالكيلو
             $table->rememberToken();
             $table->timestamps();
         });

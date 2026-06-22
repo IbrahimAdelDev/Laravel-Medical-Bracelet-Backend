@@ -9,38 +9,94 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Models\SleepAnalytic; // تأكد إنك عامل use للموديل فوق
 
 class SensorService
 {
-    public function __construct(private AppNotificationService $notificationService) {}
+    public function __construct(private readonly AppNotificationService $notificationService) {}
 
-    public function processIncomingData(array $payload)
+    public function processIncomingData(Device $device, array $payload): void
     {
-        $device = Device::where('device_uid', $payload['device_uid'])->first();
+        // 1. حفظ المؤشرات الحيوية فقط في قاعدة البيانات (لتخفيف الحمل)
+        $this->saveVitalsToDatabase($device, $payload);
 
-        if (!$device || $device->status !== 'active') {
-            return false;
-        }
-
-        $this->saveReadingsToDatabase($device, $payload);
-        // if ($payload['alerts']['sos_pressed'] === true) {
-        //     $this->alertService->triggerAlert($device, 'sos_pressed', 'SOS button pressed on the device.');
-        // }
+        // 2. فحص الخطر الفوري (عشان لو في خطر ننبه فوراً قبل ما نكلم الـ AI)
         $this->checkVitalsThresholds($device, $payload['vitals']);
 
+        // 3. التخاطب مع سيرفر الذكاء الاصطناعي (Microservice)
+        $this->analyzeWithAIService($device, $payload);
+    }
+
+    private function saveVitalsToDatabase(Device $device, array $payload): void
+    {
+        $vitals = $payload['vitals'];
+        $movement = $payload['movement'];
+        unset($payload['movement']);
+        
+        SensorReading::create([
+            'device_id' => $device->id,
+            'patient_id' => $device->patient_id,
+            'payload' => $payload,
+        ]);
+    }
+
+    private function checkVitalsThresholds(Device $device, array $vitals): void
+    {
+        $danger = false;
+        $message = '';
+
+        if ($vitals['heart_rate'] < 50 || $vitals['heart_rate'] > 120) {
+            $danger = true;
+            $message .= "Heart rate is out of safe range. \n";
+        }
+
+        if ($vitals['spo2'] < 90) {
+            $danger = true;
+            $message .= "Oxygen saturation is below safe range. \n";
+        }
+
+        if ($vitals['body_temperature'] < 35.0 || $vitals['body_temperature'] > 39.0) {
+            $danger = true;
+            $message .= "Body temperature is out of safe range. ";
+        }
+
+        if ($danger) {
+            $this->registerAlert($device, 'vitals_emergency', $message);
+        }
+    }
+
+    private function analyzeWithAIService(Device $device, array $payload): void
+    {
         try {
-            $response = Http::timeout(5)->post('http://ai_service:8000/predict-fall', [
-                'movement' => $payload['movement']
+            $patient = $device->patient;
+
+            $response = Http::timeout(10)->post('http://ai_service:8000/analyze-patient-state', [
+                'device_uid' => $payload['device_uid'],
+                'vitals' => $payload['vitals'],
+                'uv_index' => $payload['environment']['uv_index'] ?? null,
+                'movement' => $payload['movement'],
+                // ضفنا الأوبجيكت ده هنا وهنبعته جاهز
+                'patient_info' => [
+                    'gender' => $patient->gender === 'male' ? 1 : 0,
+                    'age' => $patient->age ?? 30,
+                    'weight_kg' => $patient->weight ?? 70,
+                    'height_cm' => $patient->height ?? 170,
+                ]
             ]);
 
             if ($response->successful()) {
-                $isFalling = $response->json('fall_detected');
+                $aiData = $response->json();
 
-                if ($isFalling) {
-                    $this->registerAlert($device, 'fall_detected', 'AI detected a potential fall based on movement data.');
+                // 1. التعامل مع السقوط
+                if ($aiData['fall_detected'] ?? false) {
+                    $this->registerAlert($device, 'fall_detected', 'AI detected a potential fall.');
                 }
-                
-                return $isFalling; 
+
+                // 2. التعامل مع تحليلات النوم (تتخزن في جدول منفصل أو تتحدث)
+                if (isset($aiData['sleep_analysis'])) {
+                    $this->saveSleepAnalytics($device->patient_id, $aiData['sleep_analysis']);
+                }
+
             } else {
                 Log::error('AI Service Error: ' . $response->body());
             }
@@ -48,48 +104,28 @@ class SensorService
         } catch (\Exception $e) {
             Log::error('Failed to connect to AI Service: ' . $e->getMessage());
         }
-        
-        return false;
     }
 
-    private function saveReadingsToDatabase(Device $device, array $movementData)
+    private function saveSleepAnalytics(int $patientId, array $sleepData): void
     {
-        SensorReading::create([
-            'device_id' => $device->id,
-            'patient_id' => $device->patient_id,
-            'payload' => $movementData, 
+        // هنا بتخزن نتائج البايثون في جدول التحليلات (مثلاً sleep_duration, sleep_quality, category)
+        $analytic = SleepAnalytic::firstOrCreate(
+            ['patient_id' => $patientId, 'date' => now()->toDateString()],
+            [
+                'sleep_duration' => 0,
+                'sleep_quality' => 0,
+                'disorder_prediction' => 'None',
+            ]
+        );
+
+        // 2. تحديث وتراكم البيانات (تحديث إجباري)
+        $analytic->update([
+            // بنجمع مدة النوم الجديدة على المدة السابقة
+            'sleep_duration' => $analytic->sleep_duration + ($sleepData['duration'] ?? 0),
+            // بنحدث جودة النوم والتشخيص بآخر حالة ظهرت
+            'sleep_quality' => $sleepData['quality_score'] ?? $analytic->sleep_quality,
+            'disorder_prediction' => $sleepData['disorder_prediction'] ?? $analytic->disorder_prediction,
         ]);
-    }
-
-    private function checkVitalsThresholds(Device $device, array $vitals)
-    {
-        $heartRate = $vitals['heart_rate'];
-        $spo2 = $vitals['spo2'];
-        $temperature = $vitals['body_temperature'];
-        $danger = false;
-        $message = '';
-
-        // حدود الخطر للنبض (أقل من 50 أو أعلى من 120)
-        if ($heartRate < 50 || $heartRate > 120) {
-            $danger = true;
-            $message .= "Heart rate is out of safe range. \n";
-        }
-
-        // حدود الخطر للأكسجين (أقل من 90%)
-        if ($spo2 < 90) {
-            $danger = true;
-            $message .= "Oxygen saturation is below safe range. \n";
-        }
-
-        if ($temperature < 35.0 || $temperature > 39.0) {
-            $danger = true;
-            $message .= "Body temperature is out of safe range. ";
-        }
-
-        // لو فيه خطر، هنسجل تنبيه فوري
-        if ($danger) {
-            $this->registerAlert($device, 'vitals_emergency', $message);
-        }
     }
 
     private function registerAlert(Device $device, string $type, string $notes = null): void

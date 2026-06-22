@@ -2,32 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreSensorDataRequest;
-use App\Services\SensorService;
-
-namespace App\Http\Controllers;
-
-use App\Http\Requests\StoreSensorDataRequest;
-use App\Services\SensorService;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\SensorSyncRequest;
+use App\Models\Device;
+use App\Jobs\ProcessIncomingSensorData;
+use Illuminate\Http\JsonResponse;
 
 class SensorController extends Controller
 {
-    // تعريف المتغير واستقباله بيحصل في سطر واحد جوه الـ Constructor
-    public function __construct(protected SensorService $sensorService)
+    public function store(SensorSyncRequest $request): JsonResponse
     {
-    }
+        $payload = $request->validated();
+        
+        $device = Device::where('device_uid', $payload['device_uid'])->first();
 
-    public function store(StoreSensorDataRequest $request)
-    {
-        // $this->sensorService->processIncomingData($request->validated());
+        if (!$device || $device->status !== 'active') {
+            return response()->json(['status' => 'error', 'message' => 'Device inactive or not found.'], 403);
+        }
 
-        // return response()->json(['status' => 'success', 'message' => 'Data received']);
-        $isFalling = $this->sensorService->processIncomingData($request->validated());
+        // رمي الداتا في الطابور (الـ Job بياخد الحاجات الخفيفة بس زي الـ IDs والـ Payload)
+        ProcessIncomingSensorData::dispatch($device, $payload);
 
         return response()->json([
-            'status' => 'success', 
-            'message' => 'Data received',
-            'ai_fall_detected' => $isFalling // النتيجة هتظهر هنا في بوستمان
-        ]);
+            'status' => 'success',
+            'message' => 'Data received and queued for processing.'
+        ], 202); // 202 تعني تم القبول وجاري المعالجة في الخلفية
     }
 }

@@ -46,7 +46,7 @@ Route::middleware(['auto.refresh'])->group(function () {
         Route::post('/doctor/patients/{id}/notes', [PatientController::class, 'addNote']);
         
         // المؤشرات والخط الزمني
-        // Route::get('/patients/{id}/vitals-history', [PatientController::class, 'vitalsHistory']); // حسب للي هيتبعت بالظبط لسه
+        Route::get('/doctor/patients/{id}/vitals-history', [PatientController::class, 'vitalsHistory']); // حسب للي هيتبعت بالظبط لسه
         Route::get('/doctor/patients/{id}/timeline', [PatientController::class, 'timeline']);
 
         // إعدادات الطبيب

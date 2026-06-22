@@ -100,6 +100,30 @@ services:
       - redis
     networks:
       - medical_bracelet_network
+
+  queue_worker:
+    user: "${UID}:${GID}"
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    container_name: medical_bracelet_queue_worker
+    restart: unless-stopped
+    working_dir: /var/www
+    # هذا الأمر هو الذي يبقي الحاوية تعمل وتستمع للطابور في الخلفية
+    command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=90
+    volumes:
+      - ./:/var/www
+    depends_on:
+      - app
+      - redis
+      - db
+      - ai_service
+    networks:
+      - medical_bracelet_network
+      
   ai_service:
     build:
       context: ./ai_service

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Notification;
 use App\Events\RealTimeNotificationBroadcast;
 use Illuminate\Pagination\Paginator;
+use Carbon\Carbon;
 
 class DoctorPatientService
 {
@@ -174,5 +175,68 @@ class DoctorPatientService
                 'pageName' => 'page',
             ]
         );
+    }
+
+    public function getVitalsHistory(int $doctorId, int $patientId, string $period): \Illuminate\Support\Collection
+    {
+        // 1. فحص الأمان
+        $isAssigned = DB::table('doctor_patients')
+            ->where('doctor_id', $doctorId)
+            ->where('patient_id', $patientId)
+            ->exists();
+
+        if (!$isAssigned) {
+            abort(404, 'Patient not found or not assigned to you.');
+        }
+
+        $query = DB::table('sensor_readings')
+            ->where('patient_id', $patientId)
+            ->whereNotNull('payload'); 
+
+        // 2. تجميع الداتا (الـ Aggregation Logic المشترك)
+        $selectData = "
+            ROUND(AVG(payload->>'$.vitals.heart_rate')) as heart_rate,
+            ROUND(AVG(payload->>'$.vitals.spo2')) as oxygen_level,
+            ROUND(AVG(payload->>'$.vitals.body_temperature'), 1) as temperature,
+            ROUND(AVG(payload->>'$.vitals.hrv_rmssd'), 1) as hrv_rmssd,
+            CONCAT(MAX(ROUND(payload->>'$.vitals.systolic_bp')), '/', MAX(ROUND(payload->>'$.vitals.diastolic_bp'))) as blood_pressure
+        ";
+
+        // 3. تقسيم الفترات الزمنية (Time Buckets) لضمان رسم حوالي 100 نقطة في الكيرف
+        switch ($period) {
+            case '7d':
+                // تجميع كل ساعتين (2 hours = 7200 seconds) -> هيرجع حوالي 84 عينة
+                $query->where('created_at', '>=', Carbon::now()->subDays(7))
+                      ->selectRaw("
+                          DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(created_at)/7200)*7200), '%Y-%m-%d %H:%i') as time_label,
+                          $selectData
+                      ")
+                      ->groupBy('time_label');
+                break;
+
+            case '30d':
+                // تجميع كل 8 ساعات (8 hours = 28800 seconds) -> هيرجع حوالي 90 عينة
+                $query->where('created_at', '>=', Carbon::now()->subDays(30))
+                      ->selectRaw("
+                          DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(created_at)/28800)*28800), '%Y-%m-%d %H:%i') as time_label,
+                          $selectData
+                      ")
+                      ->groupBy('time_label');
+                break;
+
+            case '24h':
+            default:
+                // تجميع كل 15 دقيقة (15 minutes = 900 seconds) -> هيرجع حوالي 96 عينة
+                $query->where('created_at', '>=', Carbon::now()->subDay())
+                      ->selectRaw("
+                          DATE_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(created_at)/900)*900), '%Y-%m-%d %H:%i') as time_label,
+                          $selectData
+                      ")
+                      ->groupBy('time_label');
+                break;
+        }
+
+        // 4. الترتيب الزمني
+        return $query->orderBy('time_label', 'asc')->get();
     }
 }
