@@ -19,9 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // 'allowed_origins' => ['*'],
 
-    // 'allowed_origins' => ['http://localhost:3000', 'http://localhost:5173', 'https://your-frontend-domain.com'],
+    'allowed_origins' => ['http://localhost:5173', 'http://72.61.180.135:5173'],
 
     'allowed_origins_patterns' => [],
 
@@ -31,6 +31,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    'supports_credentials' => true,
 
 ];

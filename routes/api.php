@@ -12,6 +12,7 @@ use App\Http\Controllers\EmergencyController;
 use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\Doctor\PatientController;
 use App\Http\Controllers\Doctor\ProfileController;
+use App\Http\Controllers\MedicationController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -52,6 +53,14 @@ Route::middleware(['auto.refresh'])->group(function () {
         // إعدادات الطبيب
         Route::put('/profile', [ProfileController::class, 'updateProfile']);
         // Route::put('/update-password', [ProfileController::class, 'updatePassword']); // doctor change password
+
+        Route::get('/missed-doses', [MedicationController::class, 'missedDoses']);
+    
+        // CRUD Operations
+        Route::get('/', [MedicationController::class, 'index']);
+        Route::post('/', [MedicationController::class, 'store']);
+        Route::put('/{medication}', [MedicationController::class, 'update']);
+        Route::delete('/{medication}', [MedicationController::class, 'destroy']);
 
         Route::post('/register/secretary', [RegisterController::class, 'registerSecretary']);
     });
