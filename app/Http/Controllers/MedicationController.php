@@ -16,18 +16,31 @@ class MedicationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $doctorId = $request->user()->id;
-        $medications = $this->medicationService->getAllMedications($doctorId);
+        $userId = $request->user()->id;
+        
+        $perPage = $request->query('per_page', 15);
+        $perPage = min((int) $perPage, 100);
+
+        $medications = $this->medicationService->getAllMedications($userId, $perPage);
 
         return response()->json([
             'status' => 'success',
-            'data' => $medications
+            'data' => $medications->items(), 
+            'pagination' => [
+                'total_items' => $medications->total(),        
+                'count' => $medications->count(),                
+                'per_page' => $medications->perPage(),           
+                'current_page' => $medications->currentPage(), 
+                'total_pages' => $medications->lastPage(),       
+                'has_more_pages' => $medications->hasMorePages(),
+            ]
         ]);
     }
 
     public function store(StoreMedicationRequest $request): JsonResponse
     {
-        $medication = $this->medicationService->createMedication($request->validated());
+        $doctorId = $request->user()->id;
+        $medication = $this->medicationService->createMedication($request->validated(), $doctorId);
 
         return response()->json([
             'status' => 'success',
@@ -59,12 +72,23 @@ class MedicationController extends Controller
 
     public function missedDoses(Request $request): JsonResponse
     {
-        $doctorId = $request->user()->id;
-        $stats = $this->medicationService->getMissedDosesStats($doctorId);
+        $userId = $request->user()->id;
 
+        $perPage = $request->query('per_page', 15);
+        $perPage = min((int) $perPage, 100);
+
+        $missedDosesPaginator = $this->medicationService->getMissedDosesStats($userId, $perPage);
         return response()->json([
             'status' => 'success',
-            'data' => $stats
+            'data' => $missedDosesPaginator->items(), // الداتا المنسقة
+            'pagination' => [
+                'total_items' => $missedDosesPaginator->total(),        
+                'count' => $missedDosesPaginator->count(),                
+                'per_page' => $missedDosesPaginator->perPage(),           
+                'current_page' => $missedDosesPaginator->currentPage(), 
+                'total_pages' => $missedDosesPaginator->lastPage(),       
+                'has_more_pages' => $missedDosesPaginator->hasMorePages(),
+            ]
         ]);
     }
 }

@@ -11,27 +11,39 @@ use Illuminate\Support\Facades\DB;
 
 class MedicationService
 {
-    public function getAllMedications(int $doctorId)
+    public function getAllMedications(int $userId, int $perPage = 15)
     {
-        // استرجاع أدوية المرضى التابعين لهذا الطبيب مع الجرعات القادمة فقط
         return Medication::with(['patient:id,name', 'doses' => function ($query) {
             $query->where('status', 'pending')
                   ->where('scheduled_at', '>=', now())
                   ->orderBy('scheduled_at', 'asc');
         }])
-        ->whereHas('patient.doctors', function ($query) use ($doctorId) {
-            $query->where('doctor_id', $doctorId);
+        ->whereHas('patient.doctors', function ($query) use ($userId) {
+            $query->where('patient_id', $userId);
         })
         ->latest()
-        ->get();
+        ->paginate($perPage);
     }
 
-    public function createMedication(array $data): Medication
+    public function createMedication(array $data, int $doctorId): Medication
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $doctorId) {
+
+            $existingMedication = Medication::where('patient_id', $data['patient_id'])
+                ->where('name', $data['name'])
+                ->where('dosage', $data['dosage'])
+                ->where('start_date', $data['start_date'])
+                ->where('end_date', $data['end_date'])
+                ->first();
+
+            // لو الدواء موجود فعلاً، نرجعه مع جرعاته بدون ما نعمل Insert جديد
+            if ($existingMedication) {
+                return $existingMedication->load('doses');
+            }
             // 1. إنشاء الدواء الأساسي
             $medication = Medication::create([
                 'patient_id' => $data['patient_id'],
+                'doctor_id' => $doctorId,
                 'name' => $data['name'],
                 'dosage' => $data['dosage'],
                 'frequency' => $data['frequency'],
@@ -66,36 +78,52 @@ class MedicationService
         $medication->delete();
     }
 
-    public function getMissedDosesStats(int $doctorId): array
+    public function getMissedDosesStats(int $doctorId, int $perPage = 15)
     {
-        // نجيب المرضى اللي عندهم جرعات فائتة (Missed) التابعين للطبيب ده
-        $patientsWithMissedDoses = User::whereHas('medications.doses', function ($query) {
-            $query->where('status', 'missed');
-        })
-        ->whereHas('doctors', function ($query) use ($doctorId) {
+        // 1. الاستعلام مع الباجينيشن
+        $paginator = \App\Models\User::whereHas('doctors', function ($query) use ($doctorId) {
             $query->where('doctor_id', $doctorId);
         })
+        ->whereHas('medications.doses', function ($query) {
+            $query->where('status', 'missed')
+                  ->orWhere(function ($q) {
+                      $q->where('status', 'pending')
+                        ->where('scheduled_at', '<', now());
+                  });
+        })
         ->with(['medications.doses' => function ($query) {
-            $query->where('status', 'missed')->orderBy('scheduled_at', 'desc');
-        }])
-        ->get();
+            $query->where('status', 'missed')
+                  ->orWhere(function ($q) {
+                      $q->where('status', 'pending')
+                        ->where('scheduled_at', '<', now());
+                  })
+                  ->orderBy('scheduled_at', 'desc');
+        }, 'medications'])
+        ->paginate($perPage); // <-- التعديل الأول هنا
 
-        return [
-            'missed_patients_count' => $patientsWithMissedDoses->count(),
-            'patients' => $patientsWithMissedDoses->map(function ($patient) {
-                return [
-                    'patient_id' => $patient->id,
-                    'patient_name' => $patient->name,
-                    'missed_doses' => $patient->medications->flatMap->doses->map(function ($dose) {
-                        return [
-                            'medication_name' => $dose->medication->name,
-                            'dosage' => $dose->medication->dosage,
-                            'scheduled_at' => $dose->scheduled_at->format('Y-m-d H:i'),
-                        ];
-                    })
-                ];
-            })
-        ];
+        // 2. استخدام through لتعديل شكل كل مريض جوه الباجينيتور
+        $paginator->through(function ($patient) {
+            $missedDoses = $patient->medications->flatMap(function ($medication) {
+                return $medication->doses->map(function ($dose) use ($medication) {
+                    return [
+                        'dose_id' => $dose->id,
+                        'medication_name' => $medication->name,
+                        'dosage' => $medication->dosage,
+                        'scheduled_at' => $dose->scheduled_at->format('Y-m-d H:i'),
+                    ];
+                });
+            })->values();
+
+            return [
+                'patient_id' => $patient->id,
+                'patient_name' => $patient->name,
+                'total_missed' => $missedDoses->count(),
+                'missed_doses' => $missedDoses,
+            ];
+        });
+
+        // هنرجع الـ Paginator نفسه للكنترولر
+        return $paginator; 
     }
 
     /**

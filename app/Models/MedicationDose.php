@@ -27,9 +27,15 @@ class MedicationDose extends Model
         return $this->belongsTo(Medication::class);
     }
 
+    protected $appends = ['actual_status'];
 
-    public function doses()
+    public function getActualStatusAttribute(): string
     {
-        return $this->hasMany(MedicationDose::class);
+        if ($this->status === 'pending' && $this->scheduled_at < now()) {
+            return 'missed';
+        }
+        
+        return $this->status;
     }
+
 }

@@ -31,4 +31,9 @@ class Medication extends Model
     public function logs() {
         return $this->hasMany(MedicationLog::class);
     }
+
+    public function doses()
+    {
+        return $this->hasMany(MedicationDose::class);
+    }
 }

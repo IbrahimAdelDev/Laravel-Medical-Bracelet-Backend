@@ -34,6 +34,9 @@ Route::middleware(['auto.refresh'])->group(function () {
     Route::post('/notifications/{notificationId}/read', [NotificationController::class, 'markAsRead']);
 
     Route::post('/patient/sos', [EmergencyController::class, 'triggerSos']);
+
+    // Medication routes
+    Route::get('/medication', [MedicationController::class, 'index']);
     
     // routes for doctors and their dashboard
     Route::middleware(['role:doctor,admin'])->group(function () {
@@ -54,13 +57,12 @@ Route::middleware(['auto.refresh'])->group(function () {
         Route::put('/profile', [ProfileController::class, 'updateProfile']);
         // Route::put('/update-password', [ProfileController::class, 'updatePassword']); // doctor change password
 
-        Route::get('/missed-doses', [MedicationController::class, 'missedDoses']);
+        Route::get('/medication/missed-doses', [MedicationController::class, 'missedDoses']);
     
-        // CRUD Operations
-        Route::get('/', [MedicationController::class, 'index']);
-        Route::post('/', [MedicationController::class, 'store']);
-        Route::put('/{medication}', [MedicationController::class, 'update']);
-        Route::delete('/{medication}', [MedicationController::class, 'destroy']);
+        // Medication routes
+        Route::post('/medication', [MedicationController::class, 'store']);
+        Route::put('/medication/{medication}', [MedicationController::class, 'update']);
+        Route::delete('/medication/{medication}', [MedicationController::class, 'destroy']);
 
         Route::post('/register/secretary', [RegisterController::class, 'registerSecretary']);
     });
