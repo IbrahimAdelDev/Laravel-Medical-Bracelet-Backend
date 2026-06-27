@@ -14,13 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
-        $middleware->statefulApi();
+        // $middleware->statefulApi();
 
-        $middleware->encryptCookies(except: [
-            'access_token',
-            'refresh_token',
-        ]);
-        
+        // $middleware->encryptCookies(except: [
+        //     'access_token',
+        //     'refresh_token',
+        // ]);
+
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'auto.refresh' => \App\Http\Middleware\AutoRefreshTokenMiddleware::class,
