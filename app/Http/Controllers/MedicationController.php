@@ -67,7 +67,7 @@ class MedicationController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Medication deleted successfully.'
-        ], 204);
+        ], 200);
     }
 
     public function missedDoses(Request $request): JsonResponse
@@ -90,5 +90,31 @@ class MedicationController extends Controller
                 'has_more_pages' => $missedDosesPaginator->hasMorePages(),
             ]
         ]);
+    }
+
+    public function todaySchedule(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $patientId = $request->user()->id;
+        
+        $schedule = $this->medicationService->getTodaySchedule($patientId);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $schedule,
+        ], 200);
+    }
+
+    // دالة تسجيل الجرعة كـ Taken
+    public function takeDose(Request $request, $doseId): \Illuminate\Http\JsonResponse
+    {
+        $patientId = $request->user()->id;
+        
+        $dose = $this->medicationService->markDoseAsTaken($doseId, $patientId);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dose marked as taken successfully.',
+            'data' => $dose
+        ], 200);
     }
 }

@@ -78,52 +78,67 @@ class MedicationService
         $medication->delete();
     }
 
-    public function getMissedDosesStats(int $doctorId, int $perPage = 15)
+    public function getMissedDosesStats(int $userId, int $perPage = 15)
     {
-        // 1. الاستعلام مع الباجينيشن
-        $paginator = \App\Models\User::whereHas('doctors', function ($query) use ($doctorId) {
-            $query->where('doctor_id', $doctorId);
-        })
-        ->whereHas('medications.doses', function ($query) {
-            $query->where('status', 'missed')
-                  ->orWhere(function ($q) {
-                      $q->where('status', 'pending')
-                        ->where('scheduled_at', '<', now());
-                  });
-        })
-        ->with(['medications.doses' => function ($query) {
-            $query->where('status', 'missed')
-                  ->orWhere(function ($q) {
-                      $q->where('status', 'pending')
-                        ->where('scheduled_at', '<', now());
-                  })
-                  ->orderBy('scheduled_at', 'desc');
-        }, 'medications'])
-        ->paginate($perPage); // <-- التعديل الأول هنا
+        return \App\Models\Medication::where('patient_id', $userId)
+            // 1. نجيب الأدوية اللي ليها جرعات فائتة فقط
+            ->whereHas('doses', function ($query) {
+                $query->where('status', 'missed')
+                      ->orWhere(function ($q) {
+                          $q->where('status', 'pending')
+                            ->where('scheduled_at', '<', now());
+                      });
+            })
+            // 2. نعمل Eager Loading للجرعات الفائتة دي نفسها مع ترتيبها من الأحدث للأقدم
+            ->with(['doses' => function ($query) {
+                $query->where('status', 'missed')
+                      ->orWhere(function ($q) {
+                          $q->where('status', 'pending')
+                            ->where('scheduled_at', '<', now());
+                      })
+                      ->orderBy('scheduled_at', 'desc');
+            }])
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
+    }
 
-        // 2. استخدام through لتعديل شكل كل مريض جوه الباجينيتور
-        $paginator->through(function ($patient) {
-            $missedDoses = $patient->medications->flatMap(function ($medication) {
-                return $medication->doses->map(function ($dose) use ($medication) {
-                    return [
-                        'dose_id' => $dose->id,
-                        'medication_name' => $medication->name,
-                        'dosage' => $medication->dosage,
-                        'scheduled_at' => $dose->scheduled_at->format('Y-m-d H:i'),
-                    ];
-                });
-            })->values();
+    /**
+     * جلب جرعات اليوم للمريض مرتبة زمنياً
+     */
+    public function getTodaySchedule(int $patientId)
+    {
+        // نستعلم من موديل الجرعات مباشرة
+        return \App\Models\MedicationDose::whereHas('medication', function ($query) use ($patientId) {
+                // نتأكد إن الدواء يخص المريض الحالي
+                $query->where('patient_id', $patientId);
+            })
+            // نفلتر بجرعات اليوم فقط (هياخد تاريخ السيرفر أو بناءً على الـ Timezone)
+            ->whereDate('scheduled_at', now()->toDateString())
+            // نجيب الحالات المطلوبة (لو عندك حالات تانية وعايز تستثنيها)
+            ->whereIn('status', ['pending', 'missed', 'taken']) 
+            // نجيب بيانات الدواء مع الجرعة (الاسم، الجرعة، الخ)
+            ->with('medication:id,name,dosage') 
+            // الترتيب من الأقدم للأحدث (من الصبح لليل)
+            ->orderBy('scheduled_at', 'asc')
+            ->get();
+    }
 
-            return [
-                'patient_id' => $patient->id,
-                'patient_name' => $patient->name,
-                'total_missed' => $missedDoses->count(),
-                'missed_doses' => $missedDoses,
-            ];
-        });
+    /**
+     * تحويل حالة الجرعة إلى "تم التناول"
+     */
+    public function markDoseAsTaken(int $doseId, int $patientId)
+    {
+        $dose = \App\Models\MedicationDose::whereHas('medication', function ($query) use ($patientId) {
+            $query->where('patient_id', $patientId);
+        })->findOrFail($doseId);
 
-        // هنرجع الـ Paginator نفسه للكنترولر
-        return $paginator; 
+        // تحديث الحالة وممكن تسجل وقت التناول الفعلي لو عندك حقل taken_at
+        $dose->update([
+            'status' => 'taken',
+            // 'taken_at' => now(), // شيل الكومنت لو ضايف الحقل ده في الداتابيز
+        ]);
+
+        return $dose;
     }
 
     /**

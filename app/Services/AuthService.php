@@ -39,7 +39,7 @@ class AuthService
     public function logout(User $user)
     {
         // Delete only the current access token
-        $user->currentAccessToken()->delete();
+        $user->currentAccessToken()?->delete();
         return true;
     }
 }

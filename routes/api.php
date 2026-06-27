@@ -19,7 +19,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register/user', [RegisterController::class, 'registerNormal']);
 Route::post('/register/doctor', [RegisterController::class, 'registerDoctor']);
 
-Route::middleware(['auto.refresh'])->group(function () {
+Route::middleware(['auto.refresh', 'auth:sanctum'])->group(function () {
     
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -37,6 +37,9 @@ Route::middleware(['auto.refresh'])->group(function () {
 
     // Medication routes
     Route::get('/medication', [MedicationController::class, 'index']);
+    Route::get('/medication/missed-doses', [MedicationController::class, 'missedDoses']);
+    Route::get('/medications/schedule/today', [MedicationController::class, 'todaySchedule']);
+    Route::patch('/medications/doses/{doseId}/take', [MedicationController::class, 'takeDose']);
     
     // routes for doctors and their dashboard
     Route::middleware(['role:doctor,admin'])->group(function () {
@@ -57,7 +60,7 @@ Route::middleware(['auto.refresh'])->group(function () {
         Route::put('/profile', [ProfileController::class, 'updateProfile']);
         // Route::put('/update-password', [ProfileController::class, 'updatePassword']); // doctor change password
 
-        Route::get('/medication/missed-doses', [MedicationController::class, 'missedDoses']);
+        
     
         // Medication routes
         Route::post('/medication', [MedicationController::class, 'store']);
