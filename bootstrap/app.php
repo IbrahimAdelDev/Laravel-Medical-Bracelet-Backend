@@ -13,6 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+
+        $middleware->statefulApi();
+
+        $middleware->encryptCookies(except: [
+            'access_token',
+            'refresh_token',
+        ]);
+        
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'auto.refresh' => \App\Http\Middleware\AutoRefreshTokenMiddleware::class,
