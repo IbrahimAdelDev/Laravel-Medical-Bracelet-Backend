@@ -16,6 +16,7 @@ use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\Patient\PatientVitalsController;
 use App\Http\Controllers\Patient\PatientMedicationController;
 use App\Http\Controllers\Patient\PatientReportController;
+use App\Http\Controllers\Patient\PatientFamilyController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -53,6 +54,10 @@ Route::middleware(['auto.refresh', 'auth:sanctum'])->group(function () {
     
     // 3. التقارير الأسبوعية
     Route::get('/patient/reports/weekly', [PatientReportController::class, 'weekly']);
+
+    // patient family management routes
+    Route::post('/patient/family/search', [PatientFamilyController::class, 'searchByEmail']);
+    Route::post('/patient/family/{familyId}/add', [PatientFamilyController::class, 'addFamilyMember']);
     
     // routes for doctors and their dashboard
     Route::middleware(['role:doctor,admin'])->group(function () {

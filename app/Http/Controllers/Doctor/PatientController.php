@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\DoctorPatientService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Http\Requests\AddPatientDeviceRequest;
 
 class PatientController extends Controller
 {
@@ -154,15 +155,15 @@ class PatientController extends Controller
     /**
      * إضافة مريض لقائمة الدكتور
      */
-    public function addPatient(Request $request, $id): JsonResponse
+    public function addPatient(AddPatientDeviceRequest $request, $patientId): \Illuminate\Http\JsonResponse
     {
         $doctorId = $request->user()->id;
         
-        $this->patientService->attachPatientToDoctor($doctorId, $id);
+        $this->patientService->attachPatientAndDevice($doctorId, $patientId, $request->validated());
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Patient has been successfully added to your list.'
-        ], 200);
+            'message' => 'Patient has been successfully linked and the medical device has been registered.'
+        ], 201); // استخدمنا 201 Created لأننا عملنا Insert لديفايس جديد
     }
 }

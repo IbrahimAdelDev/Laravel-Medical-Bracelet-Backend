@@ -12,6 +12,7 @@ use App\Models\Notification;
 use App\Events\RealTimeNotificationBroadcast;
 use Illuminate\Pagination\Paginator;
 use Carbon\Carbon;
+use App\Models\Device;
 
 class DoctorPatientService
 {
@@ -265,14 +266,23 @@ class DoctorPatientService
     /**
      * ربط مريض متاح بقائمة مرضى الدكتور
      */
-    public function attachPatientToDoctor(int $doctorId, int $patientId): void
+    public function attachPatientAndDevice(int $doctorId, int $patientId, array $deviceData): void
     {
-        $doctor = User::findOrFail($doctorId);
-        
-        // نتأكد إن الـ ID المبعوت يخص مريض فعلاً مش دكتور تاني أو آدمن
-        $patient = User::where('role', '!=', 'doctor')->findOrFail($patientId);
+        DB::transaction(function () use ($doctorId, $patientId, $deviceData) {
+            
+            $doctor = User::findOrFail($doctorId);
+            $patient = User::where('role', '!=', 'doctor')->findOrFail($patientId);
 
-        // استخدام syncWithoutDetaching عشان لو المريض مربوط بالفعل ميضربش إيرور أو يكرر الداتا في جدول doctor_patients
-        $doctor->patients()->syncWithoutDetaching([$patient->id]);
+            // 1. ربط المريض بالدكتور
+            $doctor->patients()->syncWithoutDetaching([$patient->id]);
+
+            // 2. إنشاء الجهاز الطبي وربطه بالمريض فوراً
+            Device::create([
+                'device_uid' => $deviceData['device_uid'],
+                'patient_id' => $patient->id,
+                'status' => $deviceData['status'] ?? 'active',
+            ]);
+            
+        });
     }
 }
