@@ -13,6 +13,9 @@ use App\Http\Controllers\Doctor\DashboardController;
 use App\Http\Controllers\Doctor\PatientController;
 use App\Http\Controllers\Doctor\ProfileController;
 use App\Http\Controllers\MedicationController;
+use App\Http\Controllers\Patient\PatientVitalsController;
+use App\Http\Controllers\Patient\PatientMedicationController;
+use App\Http\Controllers\Patient\PatientReportController;
 
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -40,6 +43,16 @@ Route::middleware(['auto.refresh', 'auth:sanctum'])->group(function () {
     Route::get('/medication/missed-doses', [MedicationController::class, 'missedDoses']);
     Route::get('/medications/schedule/today', [MedicationController::class, 'todaySchedule']);
     Route::patch('/medications/doses/{doseId}/take', [MedicationController::class, 'takeDose']);
+
+    // Patient-specific routes
+    // 1. الحساسات والبيانات اللحظية
+    Route::get('/patient/vitals/latest', [PatientVitalsController::class, 'latest']);
+    
+    // 2. تأكيد الأدوية (تم التناول / تأجيل)
+    Route::post('/patient/medications/{id}/confirm', [PatientMedicationController::class, 'confirm']);
+    
+    // 3. التقارير الأسبوعية
+    Route::get('/patient/reports/weekly', [PatientReportController::class, 'weekly']);
     
     // routes for doctors and their dashboard
     Route::middleware(['role:doctor,admin'])->group(function () {
@@ -48,6 +61,10 @@ Route::middleware(['auto.refresh', 'auth:sanctum'])->group(function () {
 
         // إدارة المرضى
         Route::get('/doctor/patients', [PatientController::class, 'index']);
+        // patient management routes for doctors
+        Route::get('/doctor/patients/available', [PatientController::class, 'availablePatients']);
+        Route::post('/doctor/patients/{id}/add', [PatientController::class, 'addPatient']);
+
         Route::get('/doctor/patients/{id}', [PatientController::class, 'show']);
         // Route::put('/doctor/patients/{id}', [PatientController::class, 'update']); // doctor change patient info!!!
         Route::post('/doctor/patients/{id}/notes', [PatientController::class, 'addNote']);

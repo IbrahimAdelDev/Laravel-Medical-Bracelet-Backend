@@ -24,8 +24,7 @@ class DoctorPatientService
             ->toArray();
 
         // 2. نبني الـ Query الأساسي ونجبره إنه مايخرجش بره المرضى دول
-        $query = User::whereIn('id', $patientIds)->where('role', 'user');
-
+        $query = User::with('devices')->whereIn('id', $patientIds)->where('role', 'user');
         // 3. تطبيق فلتر البحث المتقدم (لو المستخدم كتب حاجة في السيرش)
         if (!empty($searchQuery)) {
             $query->where(function ($q) use ($searchQuery) {
@@ -238,5 +237,42 @@ class DoctorPatientService
 
         // 4. الترتيب الزمني
         return $query->orderBy('time_label', 'asc')->get();
+    }
+
+    public function getAvailablePatients(int $doctorId, ?string $searchQuery, int $perPage = 15): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        // 1. نبني الاستعلام ونجبره يجيب الـ users بس، ويستبعد اللي مربوطين بالدكتور ده
+        $query = User::where('role', '!=', 'doctor')
+            ->whereDoesntHave('doctors', function ($q) use ($doctorId) {
+                $q->where('doctor_id', $doctorId);
+            });
+
+        // 2. تطبيق فلتر البحث (نفس اللوجيك الممتاز بتاعك)
+        if (!empty($searchQuery)) {
+            $query->where(function ($q) use ($searchQuery) {
+                $q->where('name', 'LIKE', "%{$searchQuery}%")
+                  ->orWhere('email', 'LIKE', "%{$searchQuery}%")
+                  ->orWhereHas('phones', function ($phoneQuery) use ($searchQuery) {
+                      $phoneQuery->where('phone_number', 'LIKE', "%{$searchQuery}%");
+                  });
+            });
+        }
+
+        // 3. ترتيب من الأحدث وإرجاع الباجينيشن
+        return $query->orderBy('id', 'desc')->paginate($perPage);
+    }
+
+    /**
+     * ربط مريض متاح بقائمة مرضى الدكتور
+     */
+    public function attachPatientToDoctor(int $doctorId, int $patientId): void
+    {
+        $doctor = User::findOrFail($doctorId);
+        
+        // نتأكد إن الـ ID المبعوت يخص مريض فعلاً مش دكتور تاني أو آدمن
+        $patient = User::where('role', '!=', 'doctor')->findOrFail($patientId);
+
+        // استخدام syncWithoutDetaching عشان لو المريض مربوط بالفعل ميضربش إيرور أو يكرر الداتا في جدول doctor_patients
+        $doctor->patients()->syncWithoutDetaching([$patient->id]);
     }
 }

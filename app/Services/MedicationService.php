@@ -166,4 +166,29 @@ class MedicationService
 
         return $doses;
     }
+
+    /**
+     * تأكيد الجرعة بناءً على قرار المريض (Taken أو Snooze)
+     */
+    public function confirmDose(int $doseId, int $patientId, string $action): \App\Models\MedicationDose
+    {
+        $dose = \App\Models\MedicationDose::whereHas('medication', function ($query) use ($patientId) {
+            $query->where('patient_id', $patientId);
+        })->findOrFail($doseId);
+
+        if ($action === 'taken') {
+            $dose->update([
+                'status' => 'taken',
+                'taken_at' => now(),
+            ]);
+        } elseif ($action === 'snooze') {
+            $dose->update([
+                'status' => 'pending',
+                'taken_at' => null,
+                'scheduled_at' => now()->addMinutes(15)
+            ]);
+        }
+
+        return $dose;
+    }
 }

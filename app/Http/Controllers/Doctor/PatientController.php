@@ -11,20 +11,33 @@ class PatientController extends Controller
 {
     public function __construct(private readonly DoctorPatientService $patientService) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
         $doctorId = $request->user()->id; 
         $searchQuery = $request->query('search'); 
-        
-        // لو الموبايل مبعتش per_page، هنخليه 15 كديفولت
         $perPage = $request->query('per_page', 15); 
 
-        // نبعت المتغير الجديد للسيرفيس
         $patients = $this->patientService->getPatientsList($doctorId, $searchQuery, $perPage);
+        
+        $transformedData = collect($patients->items())->map(function ($patient) {
+            $patientData = $patient->toArray();
+            
+            // 1. البحث داخل مصفوفة الأجهزة عن أي جهاز حالته active
+            // دالة contains هترجع true لو لقت جهاز نشط، و false لو مفيش أو المصفوفة فاضية
+            $hasActiveDevice = $patient->devices->contains('status', 'active');
+            
+            // 2. تعيين حالة الجهاز بناءً على نتيجة البحث
+            $patientData['device_status'] = $hasActiveDevice ? 'active' : 'inactive';
+            
+            // 3. مسح مصفوفة الأجهزة بالكامل من الرد النهائي
+            unset($patientData['devices']);
+            
+            return $patientData;
+        });
         
         return response()->json([
             'status' => 'success',
-            'data' => $patients->items(),
+            'data' => $transformedData,
             'pagination' => [
                 'total_items' => $patients->total(),
                 'current_page' => $patients->currentPage(),
@@ -116,5 +129,40 @@ class PatientController extends Controller
             'period' => $period,
             'data' => $vitals
         ]);
+    }
+
+    public function availablePatients(Request $request): JsonResponse
+    {
+        $doctorId = $request->user()->id; 
+        $searchQuery = $request->query('search'); 
+        $perPage = $request->query('per_page', 15); 
+
+        $patients = $this->patientService->getAvailablePatients($doctorId, $searchQuery, $perPage);
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => $patients->items(), // مفيش داعي نعمل Map للـ Device هنا لأن الدكتور لسه بيتعرف عليهم
+            'pagination' => [
+                'total_items' => $patients->total(),
+                'current_page' => $patients->currentPage(),
+                'last_page' => $patients->lastPage(),
+                'per_page' => $patients->perPage(),
+            ]
+        ], 200);
+    }
+
+    /**
+     * إضافة مريض لقائمة الدكتور
+     */
+    public function addPatient(Request $request, $id): JsonResponse
+    {
+        $doctorId = $request->user()->id;
+        
+        $this->patientService->attachPatientToDoctor($doctorId, $id);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Patient has been successfully added to your list.'
+        ], 200);
     }
 }
