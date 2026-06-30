@@ -83,12 +83,12 @@ class AutoRefreshTokenMiddleware
     // إذا لم يكن صالحاً (انتهى)، حاول التجديد
     $refreshToken = $request->header('X-Refresh-Token');
     if (!$refreshToken) {
-        return $next($request); // اتركه لـ Sanctum يرجع 401
+        return response()->json(['message' => 'Unauthenticated.'], 401); // اتركه لـ Sanctum يرجع 401
     }
 
     $token = PersonalAccessToken::findToken($refreshToken);
     if (!$token || $token->expires_at?->isPast()) {
-        return $next($request); // اتركه لـ Sanctum
+        return response()->json(['message' => 'Session expired. Please login again.'], 401); // اتركه لـ Sanctum
     }
 
     // تجديد التوكن
