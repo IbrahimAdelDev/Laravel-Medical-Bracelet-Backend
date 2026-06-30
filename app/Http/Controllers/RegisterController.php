@@ -21,7 +21,7 @@ class RegisterController extends Controller
 
     private function respondWithTokens($data)
     {
-        $accessCookie = cookie('access_token', $data['access_token'], 15, null, null, env('APP_ENV') !== 'local', true); 
+        $accessCookie = cookie('access_token', $data['access_token'], 60, null, null, env('APP_ENV') !== 'local', true); 
         $refreshCookie = cookie('refresh_token', $data['refresh_token'], 10080, null, null, env('APP_ENV') !== 'local', true);
 
         $result = [

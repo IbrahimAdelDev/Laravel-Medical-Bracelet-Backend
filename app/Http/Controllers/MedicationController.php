@@ -92,7 +92,7 @@ class MedicationController extends Controller
         ]);
     }
 
-    public function todaySchedule(Request $request): \Illuminate\Http\JsonResponse
+    public function todaySchedule(Request $request): JsonResponse
     {
         $patientId = $request->user()->id;
         
@@ -105,10 +105,46 @@ class MedicationController extends Controller
     }
 
     // دالة تسجيل الجرعة كـ Taken
-    public function takeDose(Request $request, $doseId): \Illuminate\Http\JsonResponse
+    public function takeDose(Request $request, int $doseId): JsonResponse
     {
         $patientId = $request->user()->id;
+        $patient = $request->user();
+
+        if(!$patient->cal_days_in_month) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not authorized to mark doses as taken.'
+            ], 403);
+        }
         
+        $dose = $this->medicationService->markDoseAsTaken($doseId, $patientId);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Dose marked as taken successfully.',
+            'data' => $dose
+        ], 200);
+    }
+
+    public function familyConfirmDose(Request $request, int $patientId, int $doseId): JsonResponse
+    {
+        $family = $request->user();
+        $patient = $family->monitoredPatients()->find($patientId);
+
+        if (!$patient) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not authorized to confirm doses for this patient.'
+            ], 403);
+        }
+
+        if($patient->cal_days_in_month) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not authorized to mark doses as taken.'
+            ], 403);
+        }
+
         $dose = $this->medicationService->markDoseAsTaken($doseId, $patientId);
 
         return response()->json([

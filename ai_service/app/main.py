@@ -1,8 +1,10 @@
 from fastapi import FastAPI
-from app.schemas import SensorData
 from app.services.health_calculators import calculate_bmi_category, process_movement_and_sleep
 from app.services.fall_service import analyze_fall_data
 from app.services.sleep_service import analyze_sleep_data
+from app.services.uv_service import analyze_uv_risk
+from app.schemas import SensorData, DiabetesForm
+from app.services.diabetes_service import predict_diabetes_risk
 
 app = FastAPI(title="Medical AI Service")
 
@@ -42,9 +44,20 @@ def analyze_patient_state_endpoint(data: SensorData):
         static_patient_data=static_data
     )
 
+    temp = data.vitals.get("body_temperature", 37.0)
+    uv = data.uv_index
+
+    uv_analysis = analyze_uv_risk(body_temperature=temp, uv_index=uv)
+
     # 6. إرجاع النتيجة
     return {
         "status": "success",
         "fall_detected": is_falling,
-        "sleep_analysis": sleep_results
+        "sleep_analysis": sleep_results,
+        "uv_analysis": uv_analysis
     }
+
+@app.post("/predict-diabetes")
+def check_diabetes(form_data: DiabetesForm):
+    result = predict_diabetes_risk(form_data.dict())
+    return result

@@ -30,3 +30,21 @@ class SensorData(BaseModel):
     uv_index: Optional[float] = None  # Optional تعني أنه يقبل قيمة float أو null
     movement: List[SecondData]
     patient_info: PatientInfo
+
+class DiabetesForm(BaseModel):
+    Age: int
+    Gender: int  # 1 for Male, 0 for Female
+    Polyuria: int # 1 for Yes, 0 for No (كثرة التبول)
+    Polydipsia: int # (العطش الشديد)
+    sudden_weight_loss: int
+    weakness: int
+    Polyphagia: int # (الجوع الشديد)
+    Genital_thrush: int
+    visual_blurring: int
+    Itching: int
+    Irritability: int
+    delayed_healing: int
+    partial_paresis: int
+    muscle_stiffness: int
+    Alopecia: int
+    Obesity: int

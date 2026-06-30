@@ -19,7 +19,8 @@ class StoreMedicationRequest extends FormRequest
             'dosage' => 'required|string|max:100', // مثال: "500mg"
             'frequency' => 'required|integer|min:1', // كم مرة في اليوم
             'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            'condition_id' => 'nullable|exists:conditions,id',
+            'stop_reason' => 'nullable|string|max:500|required_with:end_date', // مطلوب لو فيه تاريخ انتهاء
             // مصفوفة أوقات الجرعات (مثال: ["08:00", "20:00"])
             'scheduled_times' => 'required|array',
             'scheduled_times.*' => 'date_format:H:i',

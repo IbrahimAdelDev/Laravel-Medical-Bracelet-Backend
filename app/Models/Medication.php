@@ -9,11 +9,19 @@ class Medication extends Model
     protected $fillable = [
         'patient_id', 
         'doctor_id', 
-        'name', 'dosage', 
+        'name', 
+        'dosage', 
         'frequency_type', 
         'frequency_value', 
         'start_date', 
-        'end_date'
+        'end_date',
+        'condition_id',
+        'stop_reason'
+    ];
+
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function patient() {
@@ -35,5 +43,9 @@ class Medication extends Model
     public function doses()
     {
         return $this->hasMany(MedicationDose::class);
+    }
+
+    public function condition() {
+        return $this->belongsTo(Condition::class);
     }
 }

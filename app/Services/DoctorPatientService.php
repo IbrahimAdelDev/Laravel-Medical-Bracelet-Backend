@@ -240,27 +240,14 @@ class DoctorPatientService
         return $query->orderBy('time_label', 'asc')->get();
     }
 
-    public function getAvailablePatients(int $doctorId, ?string $searchQuery, int $perPage = 15): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function findAvailablePatientByEmail(int $doctorId, string $email): ?User
     {
-        // 1. نبني الاستعلام ونجبره يجيب الـ users بس، ويستبعد اللي مربوطين بالدكتور ده
-        $query = User::where('role', '!=', 'doctor')
+        return User::where('role', '!=', 'doctor') // التأكد إنه مريض فقط
+            ->where('email', $email)
             ->whereDoesntHave('doctors', function ($q) use ($doctorId) {
                 $q->where('doctor_id', $doctorId);
-            });
-
-        // 2. تطبيق فلتر البحث (نفس اللوجيك الممتاز بتاعك)
-        if (!empty($searchQuery)) {
-            $query->where(function ($q) use ($searchQuery) {
-                $q->where('name', 'LIKE', "%{$searchQuery}%")
-                  ->orWhere('email', 'LIKE', "%{$searchQuery}%")
-                  ->orWhereHas('phones', function ($phoneQuery) use ($searchQuery) {
-                      $phoneQuery->where('phone_number', 'LIKE', "%{$searchQuery}%");
-                  });
-            });
-        }
-
-        // 3. ترتيب من الأحدث وإرجاع الباجينيشن
-        return $query->orderBy('id', 'desc')->paginate($perPage);
+            })
+            ->first();
     }
 
     /**
@@ -277,11 +264,13 @@ class DoctorPatientService
             $doctor->patients()->syncWithoutDetaching([$patient->id]);
 
             // 2. إنشاء الجهاز الطبي وربطه بالمريض فوراً
-            Device::create([
+            if (!empty($deviceData['device_uid'])) {
+                Device::create([
                 'device_uid' => $deviceData['device_uid'],
                 'patient_id' => $patient->id,
                 'status' => $deviceData['status'] ?? 'active',
             ]);
+            }
             
         });
     }

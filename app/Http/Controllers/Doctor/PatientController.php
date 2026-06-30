@@ -132,24 +132,22 @@ class PatientController extends Controller
         ]);
     }
 
-    public function availablePatients(Request $request): JsonResponse
+    public function searchByEmail(Request $request): JsonResponse
     {
-        $doctorId = $request->user()->id; 
-        $searchQuery = $request->query('search'); 
-        $perPage = $request->query('per_page', 15); 
+        $doctorId = $request->user()->id;
+        $email = $request->query('email');
 
-        $patients = $this->patientService->getAvailablePatients($doctorId, $searchQuery, $perPage);
-        
-        return response()->json([
-            'status' => 'success',
-            'data' => $patients->items(), // مفيش داعي نعمل Map للـ Device هنا لأن الدكتور لسه بيتعرف عليهم
-            'pagination' => [
-                'total_items' => $patients->total(),
-                'current_page' => $patients->currentPage(),
-                'last_page' => $patients->lastPage(),
-                'per_page' => $patients->perPage(),
-            ]
-        ], 200);
+        if (!$email) {
+            return response()->json(['status' => 'error', 'message' => 'Email is required'], 400);
+        }
+
+        $patient = $this->patientService->findAvailablePatientByEmail($doctorId, $email);
+
+        if (!$patient) {
+            return response()->json(['status' => 'error', 'message' => 'Patient not found or already linked.'], 404);
+        }
+
+        return response()->json(['status' => 'success', 'data' => $patient], 200);
     }
 
     /**

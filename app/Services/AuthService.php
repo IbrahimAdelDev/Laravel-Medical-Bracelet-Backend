@@ -40,6 +40,7 @@ class AuthService
     {
         // Delete only the current access token
         $user->currentAccessToken()?->delete();
+        $user->tokens()->where('name', 'refresh_token')->delete();
         return true;
     }
 }

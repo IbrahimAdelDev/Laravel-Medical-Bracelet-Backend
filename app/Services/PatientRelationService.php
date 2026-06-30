@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\User;
+
+class PatientRelationService
+{
+    /**
+     * إزالة العلاقة بين الطبيب والمريض (بواسطة الطبيب)
+     */
+    public function unlinkDoctorPatient(int $doctorId, int $patientId): void
+    {
+        $doctor = User::where('role', 'doctor')->findOrFail($doctorId);
+        $patient = User::where('role', '!=', 'doctor')->findOrFail($patientId);
+
+        $detached = $doctor->patients()->detach($patient->id);
+
+        if ($detached === 0) {
+            abort(404, 'This patient is not linked to this doctor.');
+        }
+    }
+
+    /**
+     * إزالة العلاقة بين فرد العائلة والمريض (بواسطة المريض)
+     */
+    public function unlinkFamilyFromPatient(int $patientId, int $familyId): void
+    {
+        $patient = User::where('role', '!=', 'doctor')->findOrFail($patientId);
+        $family = User::where('role', '!=', 'doctor')->findOrFail($familyId);
+
+        // نقوم بإزالة الربط من جدول الـ Pivot (العلاقة المعكوسة)
+        $detached = $family->monitoredPatients()->detach($patient->id);
+
+        if ($detached === 0) {
+            abort(404, 'This family member is not linked to your account.');
+        }
+    }
+}

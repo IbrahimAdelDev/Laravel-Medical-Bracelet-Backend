@@ -33,7 +33,6 @@ class MedicationService
                 ->where('name', $data['name'])
                 ->where('dosage', $data['dosage'])
                 ->where('start_date', $data['start_date'])
-                ->where('end_date', $data['end_date'])
                 ->first();
 
             // لو الدواء موجود فعلاً، نرجعه مع جرعاته بدون ما نعمل Insert جديد
@@ -45,17 +44,16 @@ class MedicationService
                 'patient_id' => $data['patient_id'],
                 'doctor_id' => $doctorId,
                 'name' => $data['name'],
+                'condition_id' => $data['condition_id'] ?? null,
                 'dosage' => $data['dosage'],
                 'frequency' => $data['frequency'],
                 'start_date' => $data['start_date'],
-                'end_date' => $data['end_date'],
             ]);
 
             // 2. توليد الجرعات (Batch Insert للـ High Performance)
             $dosesToInsert = $this->generateDoseSchedules(
                 $medication->id,
                 $data['start_date'],
-                $data['end_date'],
                 $data['scheduled_times']
             );
 
@@ -108,7 +106,7 @@ class MedicationService
     public function getTodaySchedule(int $patientId)
     {
         // نستعلم من موديل الجرعات مباشرة
-        return \App\Models\MedicationDose::whereHas('medication', function ($query) use ($patientId) {
+        return MedicationDose::whereHas('medication', function ($query) use ($patientId) {
                 // نتأكد إن الدواء يخص المريض الحالي
                 $query->where('patient_id', $patientId);
             })
@@ -128,7 +126,7 @@ class MedicationService
      */
     public function markDoseAsTaken(int $doseId, int $patientId)
     {
-        $dose = \App\Models\MedicationDose::whereHas('medication', function ($query) use ($patientId) {
+        $dose = MedicationDose::whereHas('medication', function ($query) use ($patientId) {
             $query->where('patient_id', $patientId);
         })->findOrFail($doseId);
 
@@ -144,11 +142,11 @@ class MedicationService
     /**
      * دالة مساعدة لتوليد مصفوفة الجرعات بذكاء
      */
-    private function generateDoseSchedules(int $medicationId, string $startDate, string $endDate, array $times): array
+    private function generateDoseSchedules(int $medicationId, string $startDate, array $times): array
     {
         $doses = [];
         $start = Carbon::parse($startDate);
-        $end = Carbon::parse($endDate);
+        $end = Carbon::parse($startDate)->addDays(6); // نضيف أسبوع عشان يكون inclusive
 
         // لوب على الأيام
         for ($date = $start; $date->lte($end); $date->addDay()) {

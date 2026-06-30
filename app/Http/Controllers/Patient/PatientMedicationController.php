@@ -19,6 +19,14 @@ class PatientMedicationController extends Controller
     public function confirm(ConfirmDoseRequest $request, $id): JsonResponse
     {
         $patientId = $request->user()->id;
+        $patient = $request->user();
+
+        if(!$patient->cal_self_manage) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not authorized to confirm doses.'
+            ], 403);
+        }
         
         $dose = $this->medicationService->confirmDose($id, $patientId, $request->action);
 

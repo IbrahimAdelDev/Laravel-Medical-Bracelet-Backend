@@ -29,7 +29,7 @@ class AuthController extends Controller
             'data' => $data
         ];
 
-        $accessCookie = cookie('access_token', $data['access_token'], 15, null, null, env('APP_ENV') !== 'local', true); 
+        $accessCookie = cookie('access_token', $data['access_token'], 60, null, null, env('APP_ENV') !== 'local', true); 
         
         $refreshCookie = cookie('refresh_token', $data['refresh_token'], 10080, null, null, env('APP_ENV') !== 'local', true);
 
@@ -40,6 +40,10 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'No authenticated user found.'], 401);
+        }
         $this->authService->logout($request->user());
 
         $forgetAccess = cookie()->forget('access_token');

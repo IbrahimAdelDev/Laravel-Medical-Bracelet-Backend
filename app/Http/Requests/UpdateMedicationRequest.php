@@ -19,6 +19,8 @@ class UpdateMedicationRequest extends FormRequest
             'frequency' => 'sometimes|integer|min:1',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'condition_id' => 'nullable|exists:conditions,id',
+            'stop_reason' => 'nullable|string|max:500|required_with:end_date', // مطلوب لو فيه تاريخ انتهاء
             'scheduled_times' => 'sometimes|array',
             'scheduled_times.*' => 'date_format:H:i',
         ];

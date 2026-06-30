@@ -97,6 +97,22 @@ class SensorService
                     $this->saveSleepAnalytics($device->patient_id, $aiData['sleep_analysis']);
                 }
 
+                if (isset($aiData['uv_analysis']['status'])) {
+                    $uvStatus = $aiData['uv_analysis']['status'];
+                    
+                    if ($uvStatus === 'Danger (Heat Risk)') {
+                        // لو الموديل قال خطر، نسجل ألرت فوري ويبعت الإشعارات
+                        $this->registerAlert(
+                            $device, 
+                            'vitals_emergency', 
+                            'Critical Heat/UV Risk Detected. Please move to a shaded and cool area immediately.'
+                        );
+                    } elseif ($uvStatus === 'Sun Exposure (Normal)') {
+                        // لو مجرد تعرض للشمس، ممكن نعمل Log أو نبعت إشعار صامت بدون Alert
+                        Log::info("Patient {$device->patient_id} is exposed to normal sun levels.");
+                    }
+                }
+
             } else {
                 Log::error('AI Service Error: ' . $response->body());
             }

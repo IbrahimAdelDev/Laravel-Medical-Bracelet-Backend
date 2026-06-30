@@ -7,14 +7,17 @@ use App\Services\FamilyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\SearchFamilyRequest;
+use App\Services\PatientRelationService;
 
 class PatientFamilyController extends Controller
 {
     protected FamilyService $familyService;
+    protected PatientRelationService $relationService;
 
-    public function __construct(FamilyService $familyService)
+    public function __construct(FamilyService $familyService, PatientRelationService $relationService)
     {
         $this->familyService = $familyService;
+        $this->relationService = $relationService;
     }
 
     /**
@@ -59,6 +62,18 @@ class PatientFamilyController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Family member has been successfully linked to your profile.'
+        ], 200);
+    }
+
+    public function unlinkFamily(Request $request, $familyId): JsonResponse
+    {
+        $patientId = $request->user()->id;
+        
+        $this->relationService->unlinkFamilyFromPatient((int) $patientId, (int) $familyId);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Family member has been successfully removed from your monitoring list.'
         ], 200);
     }
 }
