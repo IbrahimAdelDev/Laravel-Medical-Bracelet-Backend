@@ -16,11 +16,9 @@ class AddPatientDeviceRequest extends FormRequest
     {
         $patientId = $this->route('id');
 
-        // استعلام سريع جداً لمعرفة هل يمتلك المريض جهاز مسبقاً
         $hasDevice = DB::table('devices')->where('patient_id', $patientId)->exists();
 
         return [
-            // لو عنده جهاز -> اختياري. لو معندوش -> إجباري.
             'device_uid' => [
                 $hasDevice ? 'nullable' : 'required',
                 'string',
@@ -30,7 +28,6 @@ class AddPatientDeviceRequest extends FormRequest
         ];
     }
     
-    // رسالة مخصصة عشان لو نسي يبعته والمريض معندوش جهاز
     public function messages(): array
     {
         return [

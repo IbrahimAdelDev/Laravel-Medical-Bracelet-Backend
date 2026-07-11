@@ -42,8 +42,8 @@ class LocationStreamCommand implements ShouldBroadcastNow
     public function broadcastWith()
     {
         return [
-            'command' => $this->command, // الموبايل هيقرا دي ويبدأ أو يوقف اللوب
-            'interval_ms' => 3000 // يبعت اللوكيشن كل 3 ثواني
+            'command' => $this->command,
+            'interval_ms' => 3000 
         ];
     }
 

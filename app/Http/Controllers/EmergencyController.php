@@ -8,21 +8,18 @@ use App\Services\EmergencyService;
 
 class EmergencyController extends Controller
 {
-    // حقن السيرفيس في الكنترولر (Dependency Injection)
     public function __construct(
         private readonly EmergencyService $emergencyService
     ) {}
 
     public function triggerSos(Request $request): JsonResponse
     {
-        // (اختياري) لو الموبايل هيبعت اللوكيشن مع زرار الطوارئ
         $validated = $request->validate([
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
         ]);
 
         try {
-            // تفويض المهمة بالكامل للـ Service
             $this->emergencyService->handleSosAlert(
                 $request->user(), 
                 $validated

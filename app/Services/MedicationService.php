@@ -35,11 +35,9 @@ class MedicationService
                 ->where('start_date', $data['start_date'])
                 ->first();
 
-            // لو الدواء موجود فعلاً، نرجعه مع جرعاته بدون ما نعمل Insert جديد
             if ($existingMedication) {
                 return $existingMedication->load('doses');
             }
-            // 1. إنشاء الدواء الأساسي
             $medication = Medication::create([
                 'patient_id' => $data['patient_id'],
                 'doctor_id' => $doctorId,
@@ -50,14 +48,12 @@ class MedicationService
                 'start_date' => $data['start_date'],
             ]);
 
-            // 2. توليد الجرعات (Batch Insert للـ High Performance)
             $dosesToInsert = $this->generateDoseSchedules(
                 $medication->id,
                 $data['start_date'],
                 $data['scheduled_times']
             );
 
-            // Insert لجميع الجرعات في Query واحد فقط
             MedicationDose::insert($dosesToInsert);
 
             return $medication->load('doses');
@@ -72,14 +68,12 @@ class MedicationService
 
     public function deleteMedication(Medication $medication): void
     {
-        // هيتم حذف الجرعات المرتبطة أوتوماتيكياً لو عامل CascadeOnDelete في الميجريشن
         $medication->delete();
     }
 
     public function getMissedDosesStats(int $userId, int $perPage = 15)
     {
         return \App\Models\Medication::where('patient_id', $userId)
-            // 1. نجيب الأدوية اللي ليها جرعات فائتة فقط
             ->whereHas('doses', function ($query) {
                 $query->where('status', 'missed')
                       ->orWhere(function ($q) {
@@ -87,7 +81,6 @@ class MedicationService
                             ->where('scheduled_at', '<', now());
                       });
             })
-            // 2. نعمل Eager Loading للجرعات الفائتة دي نفسها مع ترتيبها من الأحدث للأقدم
             ->with(['doses' => function ($query) {
                 $query->where('status', 'missed')
                       ->orWhere(function ($q) {
@@ -100,57 +93,38 @@ class MedicationService
             ->paginate($perPage);
     }
 
-    /**
-     * جلب جرعات اليوم للمريض مرتبة زمنياً
-     */
     public function getTodaySchedule(int $patientId)
     {
-        // نستعلم من موديل الجرعات مباشرة
         return MedicationDose::whereHas('medication', function ($query) use ($patientId) {
-                // نتأكد إن الدواء يخص المريض الحالي
                 $query->where('patient_id', $patientId);
             })
-            // نفلتر بجرعات اليوم فقط (هياخد تاريخ السيرفر أو بناءً على الـ Timezone)
             ->whereDate('scheduled_at', now()->toDateString())
-            // نجيب الحالات المطلوبة (لو عندك حالات تانية وعايز تستثنيها)
             ->whereIn('status', ['pending', 'missed', 'taken']) 
-            // نجيب بيانات الدواء مع الجرعة (الاسم، الجرعة، الخ)
             ->with('medication:id,name,dosage') 
-            // الترتيب من الأقدم للأحدث (من الصبح لليل)
             ->orderBy('scheduled_at', 'asc')
             ->get();
     }
 
-    /**
-     * تحويل حالة الجرعة إلى "تم التناول"
-     */
     public function markDoseAsTaken(int $doseId, int $patientId)
     {
         $dose = MedicationDose::whereHas('medication', function ($query) use ($patientId) {
             $query->where('patient_id', $patientId);
         })->findOrFail($doseId);
 
-        // تحديث الحالة وممكن تسجل وقت التناول الفعلي لو عندك حقل taken_at
         $dose->update([
             'status' => 'taken',
-            // 'taken_at' => now(), // شيل الكومنت لو ضايف الحقل ده في الداتابيز
         ]);
 
         return $dose;
     }
 
-    /**
-     * دالة مساعدة لتوليد مصفوفة الجرعات بذكاء
-     */
     private function generateDoseSchedules(int $medicationId, string $startDate, array $times): array
     {
         $doses = [];
         $start = Carbon::parse($startDate);
-        $end = Carbon::parse($startDate)->addDays(6); // نضيف أسبوع عشان يكون inclusive
+        $end = Carbon::parse($startDate)->addDays(6); 
 
-        // لوب على الأيام
         for ($date = $start; $date->lte($end); $date->addDay()) {
-            // لوب على الأوقات المحددة في اليوم
             foreach ($times as $time) {
                 $doses[] = [
                     'medication_id' => $medicationId,
@@ -165,9 +139,6 @@ class MedicationService
         return $doses;
     }
 
-    /**
-     * تأكيد الجرعة بناءً على قرار المريض (Taken أو Snooze)
-     */
     public function confirmDose(int $doseId, int $patientId, string $action): \App\Models\MedicationDose
     {
         $dose = \App\Models\MedicationDose::whereHas('medication', function ($query) use ($patientId) {

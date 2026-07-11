@@ -78,8 +78,6 @@ services:
     networks:
       - medical_bracelet_network
 
-  # ... خدماتك الحالية (laravel, mysql, redis, etc) ...
-
   reverb:
     build:
       context: .
@@ -112,7 +110,6 @@ services:
     container_name: medical_bracelet_queue_worker
     restart: unless-stopped
     working_dir: /var/www
-    # هذا الأمر هو الذي يبقي الحاوية تعمل وتستمع للطابور في الخلفية
     command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=90
     volumes:
       - ./:/var/www
@@ -133,7 +130,7 @@ services:
     volumes:
       - ./ai_service:/app
     networks:
-      - medical_bracelet_network # نفس شبكة لارافيل ليتمكنوا من التواصل
+      - medical_bracelet_network
 
 networks:
   medical_bracelet_network:

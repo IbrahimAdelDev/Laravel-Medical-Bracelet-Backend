@@ -3,20 +3,15 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Models\Condition; // الموديل الجديد
-use App\Models\Medication; // الموديل القديم اللي هنطوره
+use App\Models\Condition;
+use App\Models\Medication; 
 use Illuminate\Support\Facades\DB;
 
 class MedicalHistoryService
 {
-    // ==========================================
-    // 1. صلاحيات الطبيب (Doctor Actions)
-    // ==========================================
-
     private function getPatientForDoctor(int $doctorId, int $patientId): User
     {
         $doctor = User::where('role', 'doctor')->findOrFail($doctorId);
-        // حماية IDOR: التأكد أن المريض في قائمة هذا الطبيب
         if (! $doctor->patients()
         ->where('users.id', $patientId)
         ->exists()) {
@@ -55,18 +50,16 @@ class MedicalHistoryService
 
     public function getPaginatedMedicationHistory(User $patient, int $perPage): array
     {
-        // الأدوية الحالية: لا تحتاج لباجينيشن (عادة تكون قليلة)
         $current = Medication::where('patient_id', $patient->id)
             ->whereNull('end_date')
             ->with('condition:id,disease_name,status')
             ->orderBy('start_date', 'desc')
             ->get();
 
-        // الأدوية السابقة (الأرشيف): تحتاج لباجينيشن
         $past = Medication::where('patient_id', $patient->id)
             ->whereNotNull('end_date')
             ->with('condition:id,disease_name,status')
-            ->orderBy('end_date', 'desc') // الترتيب بالأحدث في الإيقاف
+            ->orderBy('end_date', 'desc') 
             ->paginate($perPage);
 
         return [
@@ -87,19 +80,6 @@ class MedicalHistoryService
         return $this->getPaginatedMedicationHistory($patient, $perPage);
     }
 
-    // public function addMedicationHistory(int $doctorId, int $patientId, array $data): Medication
-    // {
-    //     $patient = $this->getPatientForDoctor($doctorId, $patientId);
-        
-    //     return Medication::create([
-    //         'patient_id' => $patient->id,
-    //         'name' => $data['name'],
-    //         'dosage' => $data['dosage'] ?? null,
-    //         'start_date' => $data['start_date'],
-    //         'condition_id' => $data['condition_id'] ?? null,
-    //     ]);
-    // }
-
     public function stopMedication(int $doctorId, int $patientId, int $medId, string $stopReason): void
     {
         $patient = $this->getPatientForDoctor($doctorId, $patientId);
@@ -107,18 +87,13 @@ class MedicalHistoryService
         Medication::where('patient_id', $patient->id)
             ->where('id', $medId)
             ->update([
-                'end_date' => now(), // تحويله لـ Past تلقائياً
+                'end_date' => now(),
                 'stop_reason' => $stopReason
             ]);
     }
 
-    // ==========================================
-    // 2. صلاحيات العرض (Read-Only: Patient & Family)
-    // ==========================================
-
     public function getFullHistoryForPatient(User $patient): array
     {
-        // تقسيم الأدوية باستخدام نفس المنطق
         $medications = Medication::where('patient_id', $patient->id)
             ->with('condition:id,disease_name')
             ->orderBy('start_date', 'desc')
@@ -137,7 +112,7 @@ class MedicalHistoryService
     public function getFullHistoryForFamily(int $familyId, int $patientId): array
     {
         $family = User::where('role', '!=', 'doctor')->findOrFail($familyId);
-        $patient = $family->monitoredPatients()->findOrFail($patientId); // حماية علاقة العائلة
+        $patient = $family->monitoredPatients()->findOrFail($patientId); 
 
         return $this->getFullHistoryForPatient($patient);
     }

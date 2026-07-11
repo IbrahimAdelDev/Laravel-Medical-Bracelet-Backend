@@ -14,7 +14,6 @@ class DoctorMedicalHistoryController extends Controller
 {
     public function __construct(protected MedicalHistoryService $historyService) {}
 
-    // --- الأمراض والتشخيصات ---
     public function getConditions(Request $request, $patientId): JsonResponse {
         $perPage = $request->query('per_page', 15);
         $userId = request()->user()->id;
@@ -49,7 +48,6 @@ class DoctorMedicalHistoryController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Condition removed.']);
     }
 
-    // --- سجل الأدوية التاريخي ---
     public function getMedicationHistory(Request $request, $patientId): JsonResponse {
         $perPage = $request->query('per_page', 15);
         $userId = request()->user()->id;

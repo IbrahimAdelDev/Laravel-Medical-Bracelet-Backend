@@ -12,9 +12,9 @@ class MedicationHistoryRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'dosage' => 'required|string|max:255', // مثلاً: 500mg
+            'dosage' => 'required|string|max:255', 
             'start_date' => 'required|date|before_or_equal:today',
-            'condition_id' => 'nullable|exists:conditions,id', // لربط الدواء بمرض معين لو أمكن
+            'condition_id' => 'nullable|exists:conditions,id', 
         ];
     }
 }

@@ -24,7 +24,6 @@ class SleepAnalytic extends Model
         'sleep_quality' => 'integer',
     ];
 
-    // علاقة التحليل بالمريض
     public function patient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'patient_id');

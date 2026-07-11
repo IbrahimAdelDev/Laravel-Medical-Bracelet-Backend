@@ -14,11 +14,8 @@ return new class extends Migration
         Schema::table('medications', function (Blueprint $table) {
             $table->foreignId('condition_id')->nullable()->after('patient_id')->constrained('conditions')->onDelete('set null');
             
-            // تاريخ بداية العلاج وتاريخ الإيقاف وسبب الإيقاف
             $table->string('stop_reason', 500)->nullable()->after('end_date');
 
-            // 🚀 High Performance Index:
-            // أضفنا Index على الـ end_date لأننا بنستخدم whereNull('end_date') كتير في فصل الأدوية الحالية عن السابقة
             $table->index('end_date');
         });
     }

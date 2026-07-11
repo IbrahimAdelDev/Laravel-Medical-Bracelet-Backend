@@ -10,8 +10,6 @@ class RegisterController extends Controller
 {
     protected $userService;
     protected $authService;
-    // protected clone $userService;
-    // protected clone $authService;
 
     public function __construct(UserService $userService, AuthService $authService)
     {

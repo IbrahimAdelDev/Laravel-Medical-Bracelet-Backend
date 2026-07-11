@@ -16,7 +16,6 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         
-        // 1. التحقق من صحة الداتا (Validation)
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
@@ -26,10 +25,8 @@ class ProfileController extends Controller
         ]);
 
         try {
-            // 2. تمرير اليوزر الحالي والداتا الموثقة للسيرفيس لعمل البيزنس لوجيك
             $updatedUser = $this->profileService->updateProfile($user, $validated);
 
-            // 3. الرد الناجح النظيف للفرونت إند
             return response()->json([
                 'status' => 'success', 
                 'message' => 'Profile updated successfully.', 
@@ -37,7 +34,6 @@ class ProfileController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // صيد أي خطأ غير متوقع والرد بـ 500 دون توقيف السيرفر
             return response()->json([
                 'status' => 'error',
                 'message' => 'حدث خطأ أثناء تحديث البيانات الطبيب.',

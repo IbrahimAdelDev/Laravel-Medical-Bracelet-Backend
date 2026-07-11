@@ -21,24 +21,17 @@ class Condition extends Model
         'notes'
     ];
 
-    // تحديد نوع البيانات (Casting) لضمان التعامل مع التواريخ ككائنات Carbon
     protected $casts = [
         'diagnosed_at' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
-    /**
-     * علاقة المرض بالمريض
-     */
     public function patient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'patient_id');
     }
 
-    /**
-     * علاقة المرض بالأدوية المرتبطة به
-     */
     public function medications(): HasMany
     {
         return $this->hasMany(Medication::class, 'condition_id');

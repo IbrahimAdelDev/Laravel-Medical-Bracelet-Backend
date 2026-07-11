@@ -20,7 +20,6 @@ class AutoRefreshTokenMiddleware
     // {
     //     $accessToken = $request->bearerToken();
     
-    //     // 2. التحقق من التوكن الحالي
     //     $user = Auth::guard('sanctum')->user();
 
     //     if ($user) {
@@ -46,24 +45,19 @@ class AutoRefreshTokenMiddleware
     //         return response()->json(['message' => 'Session expired. Please login again.'], 401);
     //     }
 
-    //     // 3. تجديد التوكن
     //     $user = $token->tokenable;
     //     $newAccessToken = $user->createToken('access_token', ['access-api'], now()->addMinutes(60))->plainTextToken;
     //     $request->headers->set('Authorization', 'Bearer ' . $newAccessToken);
 
-    //     // 4. حقن اليوزر في الـ Request و الـ Auth Guard
     //     Auth::setUser($user);
     //     $request->setUserResolver(function () use ($user) {
     //         return $user;
     //     });
 
-    //     // 5. الاستمرار وإرسال التوكن الجديد في الهيدر
     //     $response = $next($request);
         
-    //     // تحديث الهيدر بالتوكن الجديد عشان الـ Controller اللي بعدنا يشوفه
     //     $request->headers->set('Authorization', 'Bearer ' . $newAccessToken);
         
-    //     // إرجاع التوكن الجديد في الـ Response Header للموبايل
     //     $response->headers->set('New-Access-Token', $newAccessToken);
     //     $response->headers->set('X-Refresh-Token', $refreshToken);
 
@@ -71,7 +65,6 @@ class AutoRefreshTokenMiddleware
     // }
     public function handle(Request $request, Closure $next)
 {
-    // إذا كان التوكن صالحاً، لا تفعل شيئاً واتركه لـ Sanctum
     if (Auth::guard('sanctum')->check()) {
         $user = Auth::guard('sanctum')->user();
         $request->setUserResolver(function () use ($user) {
@@ -80,18 +73,16 @@ class AutoRefreshTokenMiddleware
         return $next($request);
     }
 
-    // إذا لم يكن صالحاً (انتهى)، حاول التجديد
     $refreshToken = $request->header('X-Refresh-Token');
     if (!$refreshToken) {
-        return response()->json(['message' => 'Unauthenticated.'], 401); // اتركه لـ Sanctum يرجع 401
+        return response()->json(['message' => 'Unauthenticated.'], 401); 
     }
 
     $token = PersonalAccessToken::findToken($refreshToken);
     if (!$token || $token->expires_at?->isPast()) {
-        return response()->json(['message' => 'Session expired. Please login again.'], 401); // اتركه لـ Sanctum
+        return response()->json(['message' => 'Session expired. Please login again.'], 401); 
     }
 
-    // تجديد التوكن
     $user = $token->tokenable;
 
     $currentAccessToken = $request->bearerToken();
@@ -105,7 +96,6 @@ class AutoRefreshTokenMiddleware
 
     $newAccessToken = $user->createToken('access_token', ['access-api'], now()->addMinutes(60))->plainTextToken;
     
-    // تحديث الهيدر ليراه Sanctum في الـ Request القادم لنفس الريكويست
     $request->headers->set('Authorization', 'Bearer ' . $newAccessToken);
 
     $request->setUserResolver(function () use ($user) {

@@ -35,9 +35,7 @@ class FamilyMonitoringController extends Controller
         ], 200);
     }
 
-    /**
-     * جلب حالة مريض معين
-     */
+ 
     public function patientStatus(Request $request,int $id): JsonResponse
     {
         $familyId = $request->user()->id;

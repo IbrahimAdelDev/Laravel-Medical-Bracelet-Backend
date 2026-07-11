@@ -20,9 +20,7 @@ class PatientFamilyController extends Controller
         $this->relationService = $relationService;
     }
 
-    /**
-     * عرض أفراد العائلة المتاحين للربط
-     */
+
     public function searchByEmail(SearchFamilyRequest $request): JsonResponse
     {
         $patientId = $request->user()->id;
@@ -42,9 +40,7 @@ class PatientFamilyController extends Controller
         ], 200);
     }
 
-    /**
-     * ربط فرد العائلة بالحساب
-     */
+
     public function addFamilyMember(Request $request, $familyId): JsonResponse
     {
         $patientId = $request->user()->id;
@@ -56,7 +52,6 @@ class PatientFamilyController extends Controller
             ], 400);
         }
 
-        // تفادينا الـ TypeError اللي ظهرتلك وعملنا Cast هنا فوراً
         $this->familyService->attachFamilyToPatient($patientId, (int) $familyId);
 
         return response()->json([

@@ -11,7 +11,6 @@ class Vitals(BaseModel):
     diastolic_bp: float
     bp_category_code: int
 
-# 2. فاليديشن مصفوفة الحركة (كل ثانية فيها x, y, z)
 class SecondData(BaseModel):
     x: List[float]
     y: List[float]
@@ -23,22 +22,21 @@ class PatientInfo(BaseModel):
     weight_kg: float
     height_cm: float
 
-# 3. الفاليديشن الأساسي للريكويست بالكامل (بيطابق لارافيل بالمللي)
 class SensorData(BaseModel):
     device_uid: str
     vitals: Vitals
-    uv_index: Optional[float] = None  # Optional تعني أنه يقبل قيمة float أو null
+    uv_index: Optional[float] = None 
     movement: List[SecondData]
     patient_info: PatientInfo
 
 class DiabetesForm(BaseModel):
     Age: int
-    Gender: int  # 1 for Male, 0 for Female
-    Polyuria: int # 1 for Yes, 0 for No (كثرة التبول)
-    Polydipsia: int # (العطش الشديد)
+    Gender: int  
+    Polyuria: int 
+    Polydipsia: int
     sudden_weight_loss: int
     weakness: int
-    Polyphagia: int # (الجوع الشديد)
+    Polyphagia: int 
     Genital_thrush: int
     visual_blurring: int
     Itching: int

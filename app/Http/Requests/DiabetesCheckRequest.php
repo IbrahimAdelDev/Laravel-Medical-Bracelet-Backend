@@ -14,7 +14,6 @@ class DiabetesCheckRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // جميع الأعراض يجب أن تكون boolean (true/false) أو (1/0)
             'polyuria' => 'required|boolean',
             'polydipsia' => 'required|boolean',
             'sudden_weight_loss' => 'required|boolean',

@@ -80,7 +80,7 @@ class MedicationController extends Controller
         $missedDosesPaginator = $this->medicationService->getMissedDosesStats($userId, $perPage);
         return response()->json([
             'status' => 'success',
-            'data' => $missedDosesPaginator->items(), // الداتا المنسقة
+            'data' => $missedDosesPaginator->items(), 
             'pagination' => [
                 'total_items' => $missedDosesPaginator->total(),        
                 'count' => $missedDosesPaginator->count(),                
@@ -104,7 +104,6 @@ class MedicationController extends Controller
         ], 200);
     }
 
-    // دالة تسجيل الجرعة كـ Taken
     public function takeDose(Request $request, int $doseId): JsonResponse
     {
         $patientId = $request->user()->id;

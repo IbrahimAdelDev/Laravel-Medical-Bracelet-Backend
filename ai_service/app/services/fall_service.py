@@ -15,18 +15,15 @@ def calculate_std(values):
     return math.sqrt(variance)
 
 def analyze_fall_data(accel_x: list, accel_y: list, accel_z: list) -> bool:
-    # 1. حساب الانحراف المعياري (Standard Deviation)
     ax_std = calculate_std(accel_x)
     ay_std = calculate_std(accel_y)
     az_std = calculate_std(accel_z)
 
-    # 2. أخذ آخر قراءة لحساب الـ SMV (كما فعلت مريم)
     ax = accel_x[-1]
     ay = accel_y[-1]
     az = accel_z[-1]
     smv = calculate_magnitude(ax, ay, az) - 9.7 
 
-    # 3. وضع البيانات في DataFrame لتجنب أخطاء Sklearn
     features = pd.DataFrame(
         [[smv, ax_std, ay_std, az_std]],
         columns=['smv', 'ax_std', 'ay_std', 'az_std']

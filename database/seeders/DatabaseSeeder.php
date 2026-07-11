@@ -23,10 +23,9 @@ class DatabaseSeeder extends Seeder
         $faker = Faker::create();
         $now = Carbon::now();
 
-        // 1. تنظيف الداتابيز بالكامل (بما فيها جدول الهواتف)
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         User::truncate();
-        DB::table('phones')->truncate(); // 🚀 ضفنا جدول الهواتف هنا
+        DB::table('phones')->truncate();
         Device::truncate();
         Condition::truncate();
         Medication::truncate();
@@ -41,10 +40,6 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('Creating 10 Users (4 Doctors, 6 Family, 10 Patients) with Phones...');
 
-        // ==========================================
-        // 2. إنشاء المستخدمين والهواتف
-        // ==========================================
-        
         $doctors = [];
         for ($i = 1; $i <= 4; $i++) {
             $email = "doctor{$i}@test.com";
@@ -53,15 +48,13 @@ class DatabaseSeeder extends Seeder
                 'email' => $email,
                 'password' => Hash::make($email),
                 'role' => 'doctor',
-                // شيلنا الـ phone من هنا
             ]);
             $doctors[] = $doctor;
 
-            // 🚀 إضافة الهاتف في الجدول المنفصل
             DB::table('phones')->insert([
                 'user_id' => $doctor->id,
                 'phone_number' => $faker->phoneNumber,
-                'type' => 'personal', // بناءً على الـ enum اللي في الداتابيز بتاعتك
+                'type' => 'personal',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -115,9 +108,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // ==========================================
-        // 3. ربط العلاقات (Pivot Tables)
-        // ==========================================
         $this->command->info('Linking Relations (Doctors & Families to Patients)...');
         
         $doctors[0]->patients()->attach([$patients[0]->id, $patients[1]->id, $patients[2]->id]);
@@ -126,9 +116,6 @@ class DatabaseSeeder extends Seeder
         $families[0]->patients()->attach([$patients[0]->id, $patients[1]->id]);
         $families[1]->patients()->attach([$patients[2]->id]);
 
-        // ==========================================
-        // 4. إنشاء الأجهزة، الحساسات، التاريخ المرضي، الأدوية، والإنذارات
-        // ==========================================
         $this->command->info('Generating Devices, Sensors, History, Medications, and Alerts...');
 
         $conditionsList = ['Diabetes Type 2', 'Hypertension', 'Asthma', 'Heart Failure', 'Arthritis'];
@@ -207,7 +194,6 @@ class DatabaseSeeder extends Seeder
                         for ($d = -2; $d <= 2; $d++) { 
                             MedicationDose::create([
                                 'medication_id' => $medication->id,
-                                // 'patient_id' => $patient->id,  <-- احذف السطر ده تماماً
                                 'scheduled_at' => $now->copy()->addHours($d * 8),
                                 'status' => $d < 0 ? $faker->randomElement(['taken', 'missed']) : 'pending',
                                 'taken_at' => $d < 0 ? $now->copy()->addHours($d * 8)->addMinutes(10) : null,
@@ -220,7 +206,7 @@ class DatabaseSeeder extends Seeder
             DB::table('notifications')->insert([
                 'title' => 'Welcome',
                 'message' => 'Your profile is ready.',
-                'type' => 'general', // قيمة افتراضية تناسب الـ Enum عندك
+                'type' => 'general', 
                 'related_id' => $patient->id,
                 'related_model' => 'App\Models\User',
                 'created_at' => $now,

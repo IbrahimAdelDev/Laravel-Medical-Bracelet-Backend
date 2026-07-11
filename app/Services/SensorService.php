@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use App\Models\SleepAnalytic; // تأكد إنك عامل use للموديل فوق
+use App\Models\SleepAnalytic; 
 
 class SensorService
 {
@@ -17,13 +17,10 @@ class SensorService
 
     public function processIncomingData(Device $device, array $payload): void
     {
-        // 1. حفظ المؤشرات الحيوية فقط في قاعدة البيانات (لتخفيف الحمل)
         $this->saveVitalsToDatabase($device, $payload);
 
-        // 2. فحص الخطر الفوري (عشان لو في خطر ننبه فوراً قبل ما نكلم الـ AI)
         $this->checkVitalsThresholds($device, $payload['vitals']);
 
-        // 3. التخاطب مع سيرفر الذكاء الاصطناعي (Microservice)
         $this->analyzeWithAIService($device, $payload);
     }
 
@@ -75,7 +72,6 @@ class SensorService
                 'vitals' => $payload['vitals'],
                 'uv_index' => $payload['environment']['uv_index'] ?? null,
                 'movement' => $payload['movement'],
-                // ضفنا الأوبجيكت ده هنا وهنبعته جاهز
                 'patient_info' => [
                     'gender' => $patient->gender === 'male' ? 1 : 0,
                     'age' => $patient->age ?? 30,
@@ -87,12 +83,10 @@ class SensorService
             if ($response->successful()) {
                 $aiData = $response->json();
 
-                // 1. التعامل مع السقوط
                 if ($aiData['fall_detected'] ?? false) {
                     $this->registerAlert($device, 'fall_detected', 'AI detected a potential fall.');
                 }
 
-                // 2. التعامل مع تحليلات النوم (تتخزن في جدول منفصل أو تتحدث)
                 if (isset($aiData['sleep_analysis'])) {
                     $this->saveSleepAnalytics($device->patient_id, $aiData['sleep_analysis']);
                 }
@@ -101,14 +95,12 @@ class SensorService
                     $uvStatus = $aiData['uv_analysis']['status'];
                     
                     if ($uvStatus === 'Danger (Heat Risk)') {
-                        // لو الموديل قال خطر، نسجل ألرت فوري ويبعت الإشعارات
                         $this->registerAlert(
                             $device, 
                             'vitals_emergency', 
                             'Critical Heat/UV Risk Detected. Please move to a shaded and cool area immediately.'
                         );
                     } elseif ($uvStatus === 'Sun Exposure (Normal)') {
-                        // لو مجرد تعرض للشمس، ممكن نعمل Log أو نبعت إشعار صامت بدون Alert
                         Log::info("Patient {$device->patient_id} is exposed to normal sun levels.");
                     }
                 }
@@ -124,7 +116,6 @@ class SensorService
 
     private function saveSleepAnalytics(int $patientId, array $sleepData): void
     {
-        // هنا بتخزن نتائج البايثون في جدول التحليلات (مثلاً sleep_duration, sleep_quality, category)
         $analytic = SleepAnalytic::firstOrCreate(
             ['patient_id' => $patientId, 'date' => now()->toDateString()],
             [
@@ -134,11 +125,8 @@ class SensorService
             ]
         );
 
-        // 2. تحديث وتراكم البيانات (تحديث إجباري)
         $analytic->update([
-            // بنجمع مدة النوم الجديدة على المدة السابقة
             'sleep_duration' => $analytic->sleep_duration + ($sleepData['duration'] ?? 0),
-            // بنحدث جودة النوم والتشخيص بآخر حالة ظهرت
             'sleep_quality' => $sleepData['quality_score'] ?? $analytic->sleep_quality,
             'disorder_prediction' => $sleepData['disorder_prediction'] ?? $analytic->disorder_prediction,
         ]);
@@ -146,10 +134,8 @@ class SensorService
 
     private function registerAlert(Device $device, string $type, string $notes = null): void
     {
-        // تغليف العملية بالكامل في Transaction
         DB::transaction(function () use ($device, $type, $notes) {
             
-            // 1. إنشاء الألرت (هياخد ID فوراً في نفس الجلسة)
             $alert = Alert::create([
                 'patient_id' => $device->patient_id,
                 'device_id' => $device->id,
@@ -158,7 +144,6 @@ class SensorService
                 'notes' => $notes
             ]);
 
-            // 2. إرسال الإشعار للمريض
             $patient = User::find($device->patient_id);
             if ($patient) {
                 $this->notificationService->send(
@@ -172,7 +157,6 @@ class SensorService
                 );
             }
 
-            // 3. إرسال الإشعار للعائلة
             $familyMembers = $patient->familyMembers;
 
             if ($familyMembers->isNotEmpty()) {

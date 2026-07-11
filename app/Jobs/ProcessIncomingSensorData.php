@@ -19,7 +19,6 @@ class ProcessIncomingSensorData implements ShouldQueue
         public array $payload
     ) {}
 
-    // لارافيل هيعمل Auto-Inject للسيرفيس هنا أوتوماتيك
     public function handle(SensorService $sensorService): void
     {
         $sensorService->processIncomingData($this->device, $this->payload);

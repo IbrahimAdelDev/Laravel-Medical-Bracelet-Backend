@@ -8,7 +8,7 @@ class UpdatePatientProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // الصلاحيات هنفحصها جوه السيرفيس
+        return true;
     }
 
     public function rules(): array

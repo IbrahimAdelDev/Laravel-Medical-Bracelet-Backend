@@ -14,7 +14,6 @@ class SearchFamilyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // الإيميل مطلوب، لازم يكون إيميل صحيح، وموجود في جدول users
             'email' => 'required|email|exists:users,email',
         ];
     }

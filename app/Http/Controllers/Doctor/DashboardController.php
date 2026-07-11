@@ -13,7 +13,6 @@ class DashboardController extends Controller
 
     public function stats(Request $request): JsonResponse
     {
-        // بنبعت الـ ID بتاع الدكتور الحالي للسيرفيس
         $stats = $this->dashboardService->getStatsMetrics($request->user()->id);
         
         return response()->json(['status' => 'success', 'data' => $stats]);

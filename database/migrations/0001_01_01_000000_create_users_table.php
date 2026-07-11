@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('password');
             $table->enum('role', ['admin', 'doctor', 'secretary', 'user'])->default('user');
             $table->unsignedTinyInteger('age')->nullable();
-            $table->float('height')->nullable(); // بالسنتيمتر
-            $table->float('weight')->nullable(); // بالكيلو
+            $table->float('height')->nullable();
+            $table->float('weight')->nullable(); 
             $table->rememberToken();
             $table->timestamps();
         });

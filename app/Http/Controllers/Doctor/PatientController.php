@@ -23,14 +23,10 @@ class PatientController extends Controller
         $transformedData = collect($patients->items())->map(function ($patient) {
             $patientData = $patient->toArray();
             
-            // 1. البحث داخل مصفوفة الأجهزة عن أي جهاز حالته active
-            // دالة contains هترجع true لو لقت جهاز نشط، و false لو مفيش أو المصفوفة فاضية
             $hasActiveDevice = $patient->devices->contains('status', 'active');
             
-            // 2. تعيين حالة الجهاز بناءً على نتيجة البحث
             $patientData['device_status'] = $hasActiveDevice ? 'active' : 'inactive';
             
-            // 3. مسح مصفوفة الأجهزة بالكامل من الرد النهائي
             unset($patientData['devices']);
             
             return $patientData;
@@ -50,9 +46,8 @@ class PatientController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $doctorId = $request->user()->id; // جبنا ID الدكتور
+        $doctorId = $request->user()->id; 
         
-        // بعتنا ID الدكتور و ID المريض للسيرفيس
         $patient = $this->patientService->getPatientDetails($doctorId, $id);
         
         return response()->json(['status' => 'success', 'data' => $patient]);
@@ -63,7 +58,6 @@ class PatientController extends Controller
     //     $validated = $request->validate([
     //         'name' => 'sometimes|string|max:255',
     //         'email' => 'sometimes|email|unique:users,email,'.$id,
-    //         // أضف أي حقول أخرى هنا
     //     ]);
 
     //     $patient = $this->patientService->updatePatientInfo($id, $validated);
@@ -72,13 +66,12 @@ class PatientController extends Controller
 
     public function addNote(Request $request, int $id): JsonResponse
     {
-        $doctorId = $request->user()->id; // 1. جلب ID الطبيب من التوكن
+        $doctorId = $request->user()->id;
 
         $validated = $request->validate([
             'note' => 'required|string',
         ]);
 
-        // 2. إرسال ID الطبيب، و ID المريض، والداتا للسيرفيس
         $note = $this->patientService->addDoctorNote($doctorId, $id, $validated);
         
         return response()->json([
@@ -92,13 +85,10 @@ class PatientController extends Controller
     {
         $doctorId = $request->user()->id; 
         
-        // لو الموبايل مبعتش per_page، هنرجع 10 عناصر في الصفحة كديفولت
         $perPage = $request->query('per_page', 10); 
 
-        // السيرفيس هترجع Paginator
         $timeline = $this->patientService->getTimeline($doctorId, $id, $perPage);
         
-        // فصل الداتا عن الترقيم زي ما عملنا قبل كده
         return response()->json([
             'status' => 'success', 
             'data' => $timeline->items(),
@@ -115,14 +105,12 @@ class PatientController extends Controller
     {
         $doctorId = $request->user()->id;
         
-        // فاليديشن للفترة الزمنية المسموحة
         $validated = $request->validate([
             'period' => 'sometimes|in:24h,7d,30d'
         ]);
 
         $period = $validated['period'] ?? '24h';
 
-        // استدعاء السيرفيس
         $vitals = $this->patientService->getVitalsHistory($doctorId, $id, $period);
 
         return response()->json([
@@ -150,9 +138,7 @@ class PatientController extends Controller
         return response()->json(['status' => 'success', 'data' => $patient], 200);
     }
 
-    /**
-     * إضافة مريض لقائمة الدكتور
-     */
+
     public function addPatient(AddPatientDeviceRequest $request, $patientId): \Illuminate\Http\JsonResponse
     {
         $doctorId = $request->user()->id;
@@ -162,6 +148,6 @@ class PatientController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Patient has been successfully linked and the medical device has been registered.'
-        ], 201); // استخدمنا 201 Created لأننا عملنا Insert لديفايس جديد
+        ], 201);
     }
 }

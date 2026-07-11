@@ -20,12 +20,11 @@ class SensorController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Device inactive or not found.'], 403);
         }
 
-        // رمي الداتا في الطابور (الـ Job بياخد الحاجات الخفيفة بس زي الـ IDs والـ Payload)
         ProcessIncomingSensorData::dispatch($device, $payload);
 
         return response()->json([
             'status' => 'success',
             'message' => 'Data received and queued for processing.'
-        ], 202); // 202 تعني تم القبول وجاري المعالجة في الخلفية
+        ], 202); 
     }
 }

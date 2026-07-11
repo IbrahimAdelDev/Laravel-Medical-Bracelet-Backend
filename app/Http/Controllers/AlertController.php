@@ -17,9 +17,6 @@ class AlertController extends Controller
         $this->alertService = $alertService;
     }
 
-    /**
-     * عرض الإنذارات غير المحلولة للمريض
-     */
     public function unresolved(Request $request, $patientId): JsonResponse
     {
         $perPage = $request->query('per_page', 15);
@@ -46,9 +43,6 @@ class AlertController extends Controller
         ], 200);
     }
 
-    /**
-     * حل الإنذارات (تغيير حالتها لـ Resolved)
-     */
     public function resolve(ResolveAlertsRequest $request): JsonResponse
     {
         if($request->user()->can_self_manage==false) {
@@ -57,7 +51,6 @@ class AlertController extends Controller
                 'message' => 'You are not authorized to resolve alerts.'
             ], 403);
         }
-        // بنبعت مصفوفة الـ IDs للسيرفيس
         $updatedCount = $this->alertService->resolveAlerts($request->validated()['alert_ids'], $request->user()->id);
 
         return response()->json([
@@ -83,7 +76,6 @@ class AlertController extends Controller
                 'message' => 'You are not authorized to resolve alerts.'
             ], 403);
         }
-        // بنبعت مصفوفة الـ IDs للسيرفيس
         $updatedCount = $this->alertService->resolveAlerts($request->validated()['alert_ids'], $request->user()->id);
 
         return response()->json([

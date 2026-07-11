@@ -8,14 +8,10 @@ use Carbon\Carbon;
 
 class ReportService
 {
-    /**
-     * توليد ملخص تقرير أسبوعي ذو أداء عالي
-     */
     public function getWeeklySummary(int $patientId): array
     {
         $oneWeekAgo = Carbon::now()->subDays(7);
 
-        // 1. حساب متوسطات الحساسات من داخل الـ JSON باستخدام دالة MySQL
         $vitalsSummary = SensorReading::where('patient_id', $patientId)
             ->where('created_at', '>=', $oneWeekAgo)
             ->selectRaw("
@@ -25,7 +21,6 @@ class ReportService
             ")
             ->first();
 
-        // 2. إحصائيات الالتزام بالأدوية (نفس الكود اللي عملناه لأنه شغال على جدول الجرعات)
         $dosesStats = MedicationDose::whereHas('medication', function ($query) use ($patientId) {
                 $query->where('patient_id', $patientId);
             })

@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('medication_id')->constrained()->cascadeOnDelete();
-            $table->dateTime('scheduled_at'); // ميعاد الجرعة اللي المفروض ياخدها فيه
-            $table->dateTime('taken_at')->nullable(); // الوقت الفعلي اللي أخد فيه الجرعة
+            $table->dateTime('scheduled_at'); 
+            $table->dateTime('taken_at')->nullable(); 
             
             $table->enum('status', ['pending', 'taken', 'missed'])->default('pending');
             

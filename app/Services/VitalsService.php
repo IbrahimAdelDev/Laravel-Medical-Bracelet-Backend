@@ -6,12 +6,8 @@ use App\Models\SensorReading;
 
 class VitalsService
 {
-    /**
-     * جلب آخر قراءة للحساسات مع تقييم الحالة المرضية
-     */
     public function getLatestVitals(int $patientId): ?array
     {
-        // استعلام سريع جداً يجيب آخر صف للمريض
         $latestReading = SensorReading::where('patient_id', $patientId)
             ->latest('id')
             ->first();
@@ -33,16 +29,12 @@ class VitalsService
         ];
     }
 
-    /**
-     * كبسلة منطق الأعمال لتقييم الحالة
-     */
     private function evaluateVitalsStatus(array $vitals): string
     {
         $hr = $vitals['heart_rate'] ?? 0;
         $temp = $vitals['body_temperature'] ?? 0;
         $spo2 = $vitals['spo2'] ?? 100;
 
-        // تقدر تضيف الشروط بتاعتك بناءً على الـ JSON اللي إنت باعته
         if ($hr > 120 || $temp > 39.0 || $spo2 < 90) {
             return 'Critical';
         }

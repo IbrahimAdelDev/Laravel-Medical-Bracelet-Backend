@@ -14,7 +14,6 @@ class ToggleSelfManageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // الإجبار على إرسال true أو false أو 1 أو 0
             'can_self_manage' => 'required|boolean', 
         ];
     }

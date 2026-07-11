@@ -18,11 +18,10 @@ class DiabetesController extends Controller
 
     public function check(DiabetesCheckRequest $request): JsonResponse
     {
-        $patient = $request->user(); // المريض اللي عامل Login
+        $patient = $request->user();
         
         $result = $this->diabetesService->checkRisk($patient, $request->validated());
 
-        // يمكنك هنا حفظ النتيجة في الداتابيز (جدول history) إذا أردت ذلك
 
         return response()->json([
             'status' => 'success',

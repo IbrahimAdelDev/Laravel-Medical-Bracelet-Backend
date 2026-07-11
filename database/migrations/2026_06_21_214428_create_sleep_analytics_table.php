@@ -16,12 +16,10 @@ return new class extends Migration
 
             $table->foreignId('patient_id')->constrained('users')->cascadeOnDelete();
             
-            // تاريخ اليوم (عشان يكون عندنا ريكورد واحد لكل مريض في اليوم)
             $table->date('date');
             
-            // بيانات النوم اللي جاية من موديل الذكاء الاصطناعي
-            $table->float('sleep_duration')->default(0); // مدة النوم بالساعات
-            $table->integer('sleep_quality')->default(0); // جودة النوم (مثلاً من 1 لـ 10)
+            $table->float('sleep_duration')->default(0); 
+            $table->integer('sleep_quality')->default(0); 
             $table->string('disorder_prediction')->nullable();
 
             $table->timestamps();

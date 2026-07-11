@@ -16,9 +16,6 @@ class DoctorMedicationController extends Controller
         $this->medicationService = $medicationService;
     }
 
-    /**
-     * عرض أدوية المريض
-     */
     public function index(Request $request, $patientId): JsonResponse
     {
         $doctorId = $request->user()->id;

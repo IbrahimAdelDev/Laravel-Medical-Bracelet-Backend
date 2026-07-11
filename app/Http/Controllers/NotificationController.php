@@ -8,12 +8,8 @@ use App\Services\AppNotificationService;
 
 class NotificationController extends Controller
 {
-    // حقن السيرفيس في الكنترولر
     public function __construct(private AppNotificationService $notificationService) {}
 
-    /**
-     * عرض كل الإشعارات
-     */
     public function index(Request $request): JsonResponse
     {
         try {
@@ -43,9 +39,6 @@ class NotificationController extends Controller
         ], 200);
     }
 
-    /**
-     * تحديد كـ مقروء
-     */
     public function markAsRead(Request $request, int $notificationId): JsonResponse
     {
         try{
